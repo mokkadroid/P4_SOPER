@@ -326,8 +326,7 @@ long int* divider(int nthr){
 
 
 int wallet_set(Wallet* w, int miner, int flag){
-
-    if (!w || miner < 0 || flag < 0 ){
+    if (!w || miner < 0){
         printf("fallo en argumentos\n");
         return -1;
     }
@@ -444,11 +443,12 @@ int minero_map(MinSys** s, int fd, int og){
         perror("mmap"); 
         return -1;
     }
-    close(fd);    
+    close(fd);
 
    if(og){
         sem_init(&((*s)->access), 1, 1); /* inicializamos primero el semaforo */
         sem_wait(&((*s)->access)); /*bloqueamos el acceso a los datos*/
+        
         (*s)->onsys = 1;
         (*s)->wlltfull = 0;
         (*s)->b.obj = 0;
@@ -462,6 +462,7 @@ int minero_map(MinSys** s, int fd, int og){
             (*s)->miners[i] = -1;
             (*s)->votes[i] = -1;
         }
+
         i = 0; /*inicializamos las carteras del sistema y del bloque*/
         for (i = 0; i < (MAX_MINERS * 10); i++){
             if (i==0){
@@ -640,7 +641,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     
     /* abrimos shm */
     if(trg == 0){
-        if (ftruncate(fd, sizeof(systmin)) == -1){
+        if (ftruncate(fd, sizeof(MinSys)) == -1){
             /*Mostramos mensajes de error y perror si ha habido 
             algún error durante la llamada a ftruncate*/
             printf("Error al reservar la memoria compartida.\n");
@@ -651,7 +652,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         }
         if((st = minero_map(&systmin, fd, 1)) < 0){
             printf("minero: Error de minero_map\n");
-            munmap(systmin, sizeof(systmin));
+            munmap(systmin, sizeof(MinSys));
             exit(EXIT_FAILURE);
         } 
         win++;
@@ -659,7 +660,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     } else {
         if((st = minero_map(&systmin, fd, 0)) < 0){
             printf("minero: Error de minero_map\n");
-            munmap(systmin, sizeof(systmin));
+            munmap(systmin, sizeof(MinSys));
             exit(EXIT_FAILURE);
         }
     }
