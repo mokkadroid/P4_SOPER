@@ -10,54 +10,58 @@
 #endif
 
 int found = FALSE;
-volatile sig_atomic_t usr1=0, usr2=0, cand=0, alrm=0, sint=0; 
+volatile sig_atomic_t usr1 = 0, usr2 = 0, cand = 0, alrm = 0, sint = 0; 
 
 
 /* struct para los datos de trabajo de t_work */
 typedef struct {
-    long int obj;/* objetivo */
-    long int sol;/* solucion a objetivo : pow_hash(sol) = obj */
-    long int min;/* limite inferior del espacio de busqueda */
-    long int max;/* limite superior del espacio de busqueda */
+    long int obj; /* objetivo */
+    long int sol; /* solucion a objetivo : pow_hash(sol) = obj */
+    long int min; /* limite inferior del espacio de busqueda */
+    long int max; /* limite superior del espacio de busqueda */
     
 } Result; 
 
 /************** Funciones privadas **************/ 
 /* Para Result*/
-Result * res_ini(long int trg, long int inf, long int sup);
-void new_trg_set(Result **res, int n, long int trg);
-void res_free(Result **res, int n);
+Result* res_ini(long int trg, long int inf, long int sup);
+void new_trg_set(Result** res, int n, long int trg);
+void res_free(Result** res, int n);
+
 /* Para los hilos */
-void * t_work(void *args);
+void* t_work(void* args);
 void join_check(int st);
+
 /* Funciones auxiliares de minero */
-long int round(Result **res, int n, MinSys *s);
-long int * divider(int nthr);
-int validator(MinSys *s);
-int minero_map(MinSys **s, int fd, int og);
-void minero_logoff(MinSys *s);
+long int round(Result** res, int n, MinSys* s);
+long int* divider(int nthr);
+int validator(MinSys* s);
+int minero_map(MinSys** s, int fd, int og);
+void minero_logoff(MinSys* s);
+
 /*para shm y bloque*/
-int wallet_set(Wallet *w, int miner, int flag);
-int wallet_addminer(int *stat, Wallet **w, int id, int add);
-int coins_add(Wallet *w, int cns);
-int minsys_roundclr(MinSys *s);
+int wallet_set(Wallet* w, int miner, int flag);
+int wallet_addminer(int* stat, Wallet **w, int id, int add);
+int coins_add(Wallet* w, int cns);
+int minsys_roundclr(MinSys* s);
+
 /* proceso registrador */
-void registrador(Bloque *b);
+void registrador(Bloque* b);
 
 /******************** Codigo ********************/
 
 /* Handlers para las señales */
 void handler_usr1(int sig){
-    usr1=1;
+    usr1 = 1;
 }
 void handler_usr2(int sig){
-    usr2=1;
+    usr2 = 1;
 }
 void handler_int(int sig){
-    sint=1;
+    sint = 1;
 } 
 void handler_alrm(int sig){
-    alrm=1;
+    alrm = 1;
 }
 
 
@@ -74,24 +78,24 @@ void handler_alrm(int sig){
 *  Output:                                         
 *  Puntero struct de tipo Result                   
 */
-Result * res_ini(long int trg, long int inf, long int sup){
-    Result *res=NULL;
+Result* res_ini(long int trg, long int inf, long int sup){
+    Result* res = NULL;
     /* Control de errores de los argumentos*/
-    if(trg<0 || inf >= sup || inf<0 || sup<0){
+    if(trg < 0 || inf >= sup || inf < 0 || sup < 0){
         printf("res_ini: fallo en argumentos\n");
         return NULL;
     }
     /* Reserva de memoria de la estructura*/
-    res = (Result *)malloc(sizeof(Result));
+    res = (Result*) malloc(sizeof(Result));
     if(!res){
         perror("res_ini: ");
         return NULL;
     }
     /*Inicializa los campos de la estructura*/
-    res->obj=trg;
-    res->min=inf;
-    res->max=sup;
-    res->sol=-1; /*inicializamos sol como no encontrada*/
+    res->obj = trg;
+    res->min = inf;
+    res->max = sup;
+    res->sol = -1; /*inicializamos sol como no encontrada*/
 
     return res;
 } 
@@ -107,10 +111,10 @@ Result * res_ini(long int trg, long int inf, long int sup){
 *  Output:                                         
 *  void                                            
 */
-void res_free(Result **res, int n){
-    int i=0;
+void res_free(Result** res, int n){
+    int i = 0;
     if(!res) return;
-    while (i<n){    /* Recorre el array completo para liberar recursos*/
+    while (i < n){    /* Recorre el array completo para liberar recursos*/
         free(res[i]);
         i++;
     }
@@ -130,22 +134,22 @@ void res_free(Result **res, int n){
 *  Output:                                         
 *  void                                            
 */
-void new_trg_set(Result **res, int n, long int trg){
-    int i=0;
+void new_trg_set(Result** res, int n, long int trg){
+    int i = 0;
 
     /* Control de errores de los argumentos de entrada*/
-    if(!res || trg<0 || n<0){
+    if(!res || trg < 0 || n < 0){
         printf("new_trg_set: Fallo en parametros");
         return;
     }
     
     /* Init de valores para actualizar el objetivo de los campos de la estructura*/
-    while (i<n){
-        res[i]->sol=-1;
-        res[i]->obj=trg;
+    while (i < n){
+        res[i]->sol = -1;
+        res[i]->obj = trg;
         i++;
     }
-    found=FALSE; /*reset de found*/
+    found = FALSE; /*reset de found*/
 }
 
 
@@ -159,26 +163,26 @@ void new_trg_set(Result **res, int n, long int trg){
 *  Output:                                         
 *  void                                            
 */
-void * t_work(void* args){
-    long int i, res=0;
-    i = ((Result *)args)->min;
+void * t_work(Result* args){
+    long int i, res = 0;
+    i = (args)->min;
     /*printf("Im on it\n");*/
 
     if (!args){
         printf("t_work: fallo en argumentos\n");
         return NULL;
     }
-    if (found==TRUE){
+    if (found == TRUE){
         /*printf("key already found\n");*/
         return NULL;
     }
 
     /*Comprobamos si se encuentra una solución*/
-    while(i<=((Result *)args)->max && found == FALSE){
+    while(i <= (args)->max && found == FALSE){
         res = pow_hash(i);
-        if(res == ((Result *)args)->obj){
-            ((Result *)args)->sol=i;/*la solucion al hash es i*/
-            found=TRUE;
+        if(res == (args)->obj){
+            (args)->sol = i;/*la solucion al hash es i*/
+            found = TRUE;
             /*printf("key found\n");*/
           /*una vez encontrada la clave, salimos*/
             return NULL;
@@ -200,18 +204,18 @@ void * t_work(void* args){
 *  Output:                                         
 *  El nuevo target                                 
 */
-long int round(Result **res, int n, MinSys *s){
-    pthread_t *pth=NULL;
-    int i=0, j=0, st, count=0, win=0; /*st-> status de pthread_create | win-> flag para saber si el retorno sera > 0 */
-    long int new_trg=-1; /* solo sera >0 si encuentra la solucion */
+long int round(Result** res, int n, MinSys* s){
+    pthread_t* pth = NULL;
+    int i = 0, j = 0, st, count = 0, win = 0; /*st-> status de pthread_create | win-> flag para saber si el retorno sera > 0 */
+    long int new_trg = -1; /* solo sera >0 si encuentra la solucion */
 
-    if(!res || n<1 || !s){
+    if(!res || n < 1 || !s){
         printf("Round: fallo en argumentos\n");
         return new_trg;
     }
 
     /* Reserva de memoria en la creación de los hilos*/
-    pth=(pthread_t*)malloc(n*sizeof(pthread_t));
+    pth = (pthread_t*) malloc(n * sizeof(pthread_t));
     if (!pth){
         perror("round --> malloc pth: ");
         return new_trg;
@@ -220,51 +224,51 @@ long int round(Result **res, int n, MinSys *s){
 
     /* creamos los hilos mientras que no se haya recibido la señal */
     for ( i = 0; i < n && usr2<1; i++){
-        st=pthread_create(&pth[i], NULL, t_work, (void *)(res[i]));
+        st = pthread_create(&pth[i], NULL, t_work, (void*) (res[i]));
         count++;
         /*printf("hilo creado: %d\n", st);*/
-        if(st!=0){
+        if(st != 0){
             printf("Round --> pthread_create: %d\n", st);
             free(pth);
             return new_trg;
         }
     }
     /* Comprobamos la ejecucion */
-    i=0;
+    i = 0;
     for (i = 0; i < count; i++){
         st=pthread_join(pth[i], NULL);
-        if (st!=0){
+        if (st != 0){
             printf("join number: %d\n", i);
             free(pth);
             join_check(st);
             return new_trg;
         }
-        if (res[i]->sol > 0 && usr2<1){
-            new_trg= res[i]->sol;
+        if (res[i]->sol > 0 && usr2 < 1){
+            new_trg = res[i]->sol;
             for (i = 0; i < MAX_MINER; i++){
-                if(s->miners[i]>-1){
+                if(s->miners[i] > -1){
                     kill(s->miners[i], SIGUSR2);
                     j++;
                 }
-                if(j==s->onsys) break;
+                if(j == s->onsys) break;
             }
             /* accedemos a memoria para actualizar el bloque que se acaba de resolver */
             sem_wait(&(s->access));
             if(s->b.sol<0){ /* Comprobamos que sea el primer minero en acceder */
-                s->last=s->b.id;
+                s->last = s->b.id;
                 s->b.id++;
-                s->b.sol=new_trg;
-                s->b.pid=getpid();
-                win=1;
+                s->b.sol = new_trg;
+                s->b.pid = getpid();
+                win = 1;
                 printf("Solucion de ronda: %08ld\n", new_trg);
             }
             sem_post(&(s->access));
         } 
         
     }
-    usr2=0; /* reseteamos la flag de usr2 para poder indicar luego el comienzo de la votacion */
-    if(win==0) new_trg=-2;
-    if(count>0) free(pth);
+    usr2 = 0; /* reseteamos la flag de usr2 para poder indicar luego el comienzo de la votacion */
+    if(win == 0) new_trg = -2;
+    if(count > 0) free(pth);
     return new_trg;
 }
 
@@ -279,14 +283,14 @@ long int round(Result **res, int n, MinSys *s){
 *  Output:                                         
 *  array con los limites de cada intervalo         
 */
-long int * divider(int nthr){
-   long int *minmax=NULL;
-   int i=2, a=1;
-   double quant=0.00, b=nthr;
+long int* divider(int nthr){
+   long int* minmax = NULL;
+   int i = 2, a = 1;
+   double quant = 0.00, b = nthr;
 
     /* Control de errores y reserva de memoria para los intervalos*/
-    if(nthr<1) return NULL;
-    minmax = (long int*)malloc((2*nthr)*sizeof(long int));
+    if(nthr < 1) return NULL;
+    minmax = (long int*) malloc((2 * nthr) * sizeof(long int));
     if(!minmax){
         perror("Fallo en divider: ");
         return NULL;
@@ -294,17 +298,17 @@ long int * divider(int nthr){
 
     /* los espacios van delimitados por a/N : a={2, 3, ..., N} */
     /* como cota inferior tendran ((a-1)/N)+1 */
-    quant=a/b;
-    minmax[0]=0;
-    minmax[1]=POW_LIMIT*quant;
+    quant = a / b;
+    minmax[0] = 0;
+    minmax[1] = POW_LIMIT * quant;
 
-    while(i<(2*nthr)){
-        quant=a/b;
-        if(i%2==0){/* los indices pares son los minimos */
-            minmax[i] = (POW_LIMIT*quant)+1;
+    while(i < (2 * nthr)){
+        quant = a / b;
+        if(i % 2 == 0){/* los indices pares son los minimos */
+            minmax[i] = (POW_LIMIT * quant) + 1;
             a++;
         } else { /* los impares los maximos */
-            minmax[i] = POW_LIMIT*quant;
+            minmax[i] = POW_LIMIT * quant;
         }
         i++;
     }
@@ -313,28 +317,28 @@ long int * divider(int nthr){
 }
 
 
-int wallet_set(Wallet *w, int miner, int flag){
+int wallet_set(Wallet* w, int miner, int flag){
 
-    if (!w || miner<0 || flag<0 ){
+    if (!w || miner < 0 || flag < 0 ){
         printf("fallo en argumentos\n");
         return -1;
     }
     
-    w->active=flag;
-    w->coins=0;
-    w->pid=miner;
+    w->active = flag;
+    w->coins = 0;
+    w->pid = miner;
     return 0;
     
 }
 
 
-int coins_add(Wallet *w, int cns){
+int coins_add(Wallet* w, int cns){
     if(!w || cns<1){
         printf("coins_add->Fallo en argumentos\n");
         return -1;
     }
 
-    w->coins+=cns;
+    w->coins += cns;
     return 0;
 }
 
@@ -354,52 +358,52 @@ int coins_add(Wallet *w, int cns){
 *  Output:
 *  0 si todo ok, -1 si hay error en parametros o no se ha podido añadir la cartera
 */
-int wallet_addminer(int *stat, Wallet **w, int id, int add){
-    int i=0;
+int wallet_addminer(int* stat, Wallet** w, int id, int add){
+    int i = 0;
 
-    if(!w || id<0){
+    if(!w || id < 0){
         printf("wallet_addminer -> fallo en argumentos\n");
         return -1;
     }
 
-    if(add==0 && (*stat)>=0){
+    if(add == 0 && (*stat) >= 0){
         for (i = 0; i < 1000; i++){
-            if (id==w[i]->pid){
-                w[i]->active=0;
+            if (id == w[i]->pid){
+                w[i]->active = 0;
                 return 0;
             }
         }
-    } else if(add==0 && (*stat)==-1){
+    } else if(add == 0 && (*stat) == -1){
         for (i = 0; i < MAX_MINER; i++){
-            if (id==w[i]->pid){
-                w[i]->active=-1;
-                w[i]->coins=0;
-                w[i]->pid=-1;
+            if (id == w[i]->pid){
+                w[i]->active = -1;
+                w[i]->coins = 0;
+                w[i]->pid = -1;
                 return 0;
             }
         }
-    } else if (add==1 && !stat){
+    } else if (add == 1 && !stat){
         for (i = 0; i < MAX_MINER; i++){
             if(w[i]->pid<0){
                 w[i]->pid = id;
-                w[i]->active=1;
-                w[i]->coins=0;
+                w[i]->active = 1;
+                w[i]->coins = 0;
                 return 0;  
             }
         }
         
-    } else if (add==1 && stat){
+    } else if (add == 1 && stat){
         for (i = 0; i < 1000; i++){
-            if ((*stat)==1000 && w[i]->active==0){
+            if ((*stat) == 1000 && w[i]->active == 0){
                 w[i]->pid = id;
-                w[i]->active=1;
-                w[i]->coins=0;
+                w[i]->active = 1;
+                w[i]->coins = 0;
                 return 0;
             }
-            if (w[i]->active<0){ /* solo sera <0 si el hueco esta libre */
+            if (w[i]->active < 0){ /* solo sera <0 si el hueco esta libre */
                 w[i]->pid = id;
-                w[i]->active=1;
-                w[i]->coins=0;
+                w[i]->active = 1;
+                w[i]->coins = 0;
                 (*stat)++;
                 return 0;
             }
@@ -421,9 +425,9 @@ int wallet_addminer(int *stat, Wallet **w, int id, int add){
 *  Output:                                         
 *  void                                             
 */
-int minero_map(MinSys **s, int fd, int og){
-    int i=0, st=0;
-    if(fd<0 || og<0){
+int minero_map(MinSys** s, int fd, int og){
+    int i = 0, st = 0;
+    if(fd < 0 || og < 0){
         printf("minero_map: fallo en args\n");
         return -1;
     }
@@ -437,63 +441,63 @@ int minero_map(MinSys **s, int fd, int og){
    if(og){
         sem_init(&((*s)->access), 1, 1); /* inicializamos primero el semaforo */
         sem_wait(&((*s)->access)); /*bloqueamos el acceso a los datos*/
-        (*s)->onsys=1;
-        (*s)->last=-1; /* antes no se ha resuelto ninguno */
-        (*s)->wlltfull=0;
-        (*s)->b.obj=0;
-        (*s)->b.sol=-1;
-        (*s)->b.id=0;/*id del bloque actual por resolver */
-        (*s)->b.votes[0]=0; /*votos a favor*/
-        (*s)->b.votes[1]=0;/*votos totales*/
+        (*s)->onsys = 1;
+        (*s)->last = -1; /* antes no se ha resuelto ninguno */
+        (*s)->wlltfull = 0;
+        (*s)->b.obj = 0;
+        (*s)->b.sol = -1;
+        (*s)->b.id = 0;/*id del bloque actual por resolver */
+        (*s)->b.votes[0] = 0; /*votos a favor*/
+        (*s)->b.votes[1] = 0;/*votos totales*/
         /*inicializamos el array de mineros activos*/
         for (i = 0; i < MAX_MINER; i++){ 
-            if (i==0) (*s)->miners[i]=getpid();
-            (*s)->miners[i]=-1;
-            (*s)->votes[i]=-1;
+            if (i == 0) (*s)->miners[i] = getpid();
+            (*s)->miners[i] = -1;
+            (*s)->votes[i] = -1;
         }
-        i=0; /*inicializamos las carteras del sistema y del bloque*/
-        for (i = 0; i < (MAX_MINER*10); i++){
+        i = 0; /*inicializamos las carteras del sistema y del bloque*/
+        for (i = 0; i < (MAX_MINER * 10); i++){
             if (i==0){
-                if ((st=wallet_set(&((*s)->wllt[i]), (*s)->miners[i], 1))<0){
+                if ((st = wallet_set(&((*s)->wllt[i]), (*s)->miners[i], 1)) < 0){
                     printf("minero_map: fallo en wallet_set\n");
                     return -1;
                 }
-                if ((st=wallet_set(&((*s)->b.wlt[i]), (*s)->miners[i], 1))<0){
+                if ((st = wallet_set(&((*s)->b.wlt[i]), (*s)->miners[i], 1)) < 0){
                     printf("minero_map: fallo en wallet_set para bloque\n");
                     return -1; 
                 }
                 (*s)->wlltfull++;
-            } else if ((st=wallet_set(&((*s)->wllt[i]), 0, -1))<0){
+            } else if ((st = wallet_set(&((*s)->wllt[i]), 0, -1)) < 0){
                     printf("minero_map: fallo en wallet_set\n");
                     return -1; 
-            } else if ((st=wallet_set(&((*s)->b.wlt[i]), 0, -1))<0){
+            } else if ((st = wallet_set(&((*s)->b.wlt[i]), 0, -1)) < 0){
                 printf("minero_map: fallo en wallet_set para bloque\n");
                 return -1; 
             }
         }
         sem_post(&((*s)->access));
    } else {
-        if((st=sem_wait(&((*s)->access)))<0){
+        if((st = sem_wait(&((*s)->access))) < 0){
             perror("El sistema esta siendo liberado o ha ocurrido lo siguiente: ");
             return -1;
         }
         for (i = 0; i < MAX_MINER; i++){ 
-            if ((*s)->miners[i]==-1){
-                (*s)->miners[i]=getpid();
+            if ((*s)->miners[i] == -1){
+                (*s)->miners[i] = getpid();
                 (*s)->onsys++;
-                st=0;
+                st = 0;
                 break;
             }
-            st=1;
+            st = 1;
         }
         /* Si se ha podido unir al sistema, se crea una cartera */
-        if (st==1){
-            if((st=wallet_addminer(&((*s)->wlltfull), &((*s)->wllt), getpid(), 1))<0){
+        if (st == 1){
+            if((st = wallet_addminer(&((*s)->wlltfull), &((*s)->wllt), getpid(), 1)) < 0){
                sem_post(&((*s)->access));
                printf("minero_map: fallo en wallet_addminer\n");
                return -1; 
             }
-            if((st=wallet_addminer(NULL, &((*s)->b.wlt), getpid(), 1))<0){
+            if((st = wallet_addminer(NULL, &((*s)->b.wlt), getpid(), 1)) < 0){
                sem_post(&((*s)->access));
                printf("minero_map: fallo en wallet_addminer para bloque\n");
                return -1; 
@@ -502,28 +506,28 @@ int minero_map(MinSys **s, int fd, int og){
         
         sem_post(&((*s)->access));
    }    
-    return st;  
+    return st;
 }
 
 
-void minero_logoff(MinSys *s){
-    int i=0, miner, st=-1;
+void minero_logoff(MinSys* s){
+    int i = 0, miner, st = -1;
 
     if(!s) return;
-    miner=getpid();
+    miner = getpid();
     sem_wait(&(s->access));
     s->onsys--;
     for (i = 0; i < MAX_MINER; i++){
-        if(s->miners[i]==miner) s->miners[i]=-1;
+        if(s->miners[i] == miner) s->miners[i] = -1;
     }
 
-    if((i=wallet_addminer(&st, &(s->b.wlt), miner, 0))<0){
+    if((i = wallet_addminer(&st, &(s->b.wlt), miner, 0)) < 0){
         printf("minero_logoff: fallo en wallet_addminer");
         munmap(s, sizeof(s));
         return;
     }
 
-    if(s->onsys==0){
+    if(s->onsys == 0){
         sem_destroy(&(s->barrier));
         sem_destroy(&(s->mutex));
         sem_post(&(s->access));
@@ -548,18 +552,18 @@ void minero_logoff(MinSys *s){
 *  void                                            
 */
 void minero(long int trg, int n, unsigned int secs, int fd){
-    int i=0, j=0, og=1, win=0, st;
-    long int *minmax=NULL, solucion;
-    Result **res=NULL;
+    int i = 0, j = 0, og = 1, win = 0, st;
+    long int* minmax = NULL, solucion;
+    Result** res = NULL;
     mqd_t q;
     struct mq_attr attributes;
     Bloque msg;
-    MinSys *systmin=NULL;
+    MinSys* systmin = NULL;
     struct sigaction act1, act2, actint, actlrm;
     sigset_t set, oset;
 
     /* Control de errores sobre los parametros de entrada*/
-    if (trg<0 || n<1 || fd<0 || secs<0){
+    if (trg < 0 || n < 1 || fd < 0 || secs < 0){
         printf("Minero: Error en parametros\n");
         exit(EXIT_FAILURE);
     }
@@ -631,7 +635,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     sigprocmask(SIG_UNBLOCK, &set, &oset);
     
     /* abrimos shm */
-    if(trg==0){
+    if(trg == 0){
         if (ftruncate(fd, sizeof(systmin)) == -1){
             /*Mostramos mensajes de error y perror si ha habido 
             algún error durante la llamada a ftruncate*/
@@ -641,7 +645,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
             close(fd);
             exit(EXIT_FAILURE);
         }
-        if((st=minero_map(&systmin, fd, 1))<0){
+        if((st = minero_map(&systmin, fd, 1)) < 0){
             printf("minero: Error de minero_map\n");
             munmap(systmin, sizeof(systmin));
             exit(EXIT_FAILURE);
@@ -649,14 +653,14 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         win++;
 
     } else {
-        if((st=minero_map(&systmin, fd, 0))<0){
+        if((st = minero_map(&systmin, fd, 0)) < 0){
             printf("minero: Error de minero_map\n");
             munmap(systmin, sizeof(systmin));
             exit(EXIT_FAILURE);
         }
     }
     /* Llamada a la función auxiliar de minero*/ 
-    minmax=divider(n);
+    minmax = divider(n);
     if(!minmax){
         printf("Minero: Error en minmax\n");
         minero_logoff(systmin);
@@ -664,7 +668,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     }
 
     /* Ahora creamos el array de Result */
-    res=(Result**)malloc(n*sizeof(Result*));
+    res = (Result**) malloc(n * sizeof(Result*));
     if (res==NULL){
         perror("Minero: Error en res, ");
         minero_logoff(systmin);
@@ -672,14 +676,14 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         exit(EXIT_FAILURE);
     }
      
-    if(trg>0) trg=systmin->b.obj; /* Si no es el primer minero en conectarse al sistema, 
+    if(trg > 0) trg = systmin->b.obj; /* Si no es el primer minero en conectarse al sistema, 
                                  * se pone como objetivo de busqueda lo que haya en shm */
     for (i = 0; i < n; i++){
-        res[i]=res_ini(trg, minmax[j], minmax[j+1]);
-        if (res[i]==NULL){
+        res[i] = res_ini(trg, minmax[j], minmax[j + 1]);
+        if (res[i] == NULL){
             printf("Minero: Error en bucle de res\n");
             i--;
-            while (i>=0) {
+            while (i >= 0) {
                 free(res[i]);
                 i--;
             }
@@ -688,7 +692,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
             free(minmax);
             exit(EXIT_FAILURE);
         }
-        j+=2;
+        j += 2;
     }
     /* Abrimos cola */
     /*atributos de la cola */
@@ -725,60 +729,60 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     /* Bucle de ejecucion de las rondas */
     while (alrm < 1 || sint < 1){
         /* Si es el ganador o el primer minero, manda USR1 para iniciar minado */
-        if(win==1){
+        if(win == 1){
             sem_wait(&(systmin->access));
             sem_init(&(systmin->barrier), 1, 0);
             sem_init(&(systmin->mutex), 1, 1);
-            systmin->count=0;
+            systmin->count = 0;
             sem_post(&(systmin->access));
-            j=0;
+            j = 0;
             for (i = 0; i < MAX_MINER; i++){
-                if(systmin->miners[i]>-1){
+                if(systmin->miners[i] > -1){
                     kill(systmin->miners[i], SIGUSR1);
                     j++;
                 }
-                if(j==systmin->onsys) break;
+                if(j == systmin->onsys) break;
             }
-            win=0; 
+            win = 0; 
         }
         /* Esperamos USR1 para comenzar ronda de minado */
         sigemptyset(&set);
         sigaddset(&set, SIGUSR1);
         sigprocmask (SIG_BLOCK, &set, NULL);
-        while (usr1==0) sigsuspend (&oset);
+        while (usr1 == 0) sigsuspend (&oset);
         sigprocmask (SIG_UNBLOCK, &set, NULL);
-        usr1=0; /*reseteamos la flag de USR1*/
+        usr1 = 0; /*reseteamos la flag de USR1*/
         solucion=round(res,n, systmin);
-        if(solucion==-1){  
+        if(solucion == -1){  
             printf("Fallo en ronda\n");
             /*mq_close(q);*/
             res_free(res, n);
             free(minmax);
             exit(EXIT_FAILURE);
-        } else if (solucion>=0){
-            win=1; /*indicamos que es el ganador de la ronda para la proxima iteracion */
+        } else if (solucion >= 0){
+            win = 1; /*indicamos que es el ganador de la ronda para la proxima iteracion */
             /* mandamos señal para comenzar a votar */
-            j=0;
+            j = 0;
             for (i = 0; i < MAX_MINER; i++){
-                if(systmin->miners[i]>-1){
+                if(systmin->miners[i] > -1){
                     kill(systmin->miners[i], SIGUSR2);
                     j++;
                 }
-                if(j==systmin->onsys) break;
+                if(j == systmin->onsys) break;
             }
         } 
         /* Esperamos a USR2 para votar */
         sigemptyset(&set);
         sigaddset(&set, SIGUSR2);
         sigprocmask (SIG_BLOCK, &set, NULL);
-        while (usr2==0) sigsuspend (&oset);
+        while (usr2 == 0) sigsuspend (&oset);
         sigprocmask (SIG_UNBLOCK, &set, NULL);
-        usr2=0; /*reseteamos la flag de usr2 */
+        usr2 = 0; /*reseteamos la flag de usr2 */
         /**
          *  comienza la votacion, el ganador tambien vota llamando
          *  a monitor para validar la solucion que ha obtenido
          */
-        if((st=validator(systmin))<0){
+        if((st = validator(systmin)) < 0){
             printf("minero: error en validador\n");
             minero_logoff(systmin);
             res_free(res, n);
@@ -798,7 +802,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         sem_wait(&(systmin->barrier));
         sem_post(&(systmin->barrier));
         /* aqui mandariamos por tuberia el bloque a registrador */
-        if(win==1){
+        if(win == 1){
             printf("Bloque a registrar:\n");
             printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n", systmin->b.id, systmin->b.obj, systmin->b.sol, systmin->b.votes[0], systmin->b.votes[1]);
         }
@@ -813,31 +817,31 @@ void minero(long int trg, int n, unsigned int secs, int fd){
 }
 
 
-int validator(MinSys *s){
-    int pid, i=0, valid=0, voted=0;
+int validator(MinSys* s){
+    int pid, i = 0, valid = 0, voted = 0;
     /* voted -> flag para que pueda emitir su voto el minero ganador una sola vez */
     long int solhash;
     if(!s){
         printf("validador: puntero a shm NULL\n");
         return -1;
     }
-    solhash=pow_hash(s->b.sol);/* En solhash se guarda la solucion correcta al hash */
+    solhash = pow_hash(s->b.sol);/* En solhash se guarda la solucion correcta al hash */
 
-    if ((pid=getpid())==s->b.pid){/* Si es el minero ganador */
+    if ((pid = getpid()) == s->b.pid){/* Si es el minero ganador */
         for (i = 0; i < s->onsys; i++){ /* comprueba tantas veces como mineros conectados haya*/
-            usleep(250*1000);/*espera inactiva de 250ms*/
+            usleep(250 * 1000);/*espera inactiva de 250ms*/
             sem_wait(&(s->access));
-            if(s->votes[i]!=-1){
-                s->b.votes[0]+=s->votes[i];/*votos a favor*/
+            if(s->votes[i] != -1){
+                s->b.votes[0] += s->votes[i];/*votos a favor*/
                 s->b.votes[1]++;/*votos totales*/
             } else {
                 if(voted == 0){ 
                     if(solhash == s->b.obj){
-                        s->votes[i]=1;
+                        s->votes[i] = 1;
                     } else {
-                        s->votes[i]=0;
+                        s->votes[i] = 0;
                     }
-                    s->b.votes[0]+=s->votes[i];/*votos a favor*/
+                    s->b.votes[0] += s->votes[i];/*votos a favor*/
                     s->b.votes[1]++;/*votos totales*/
                     voted++;/* se sube la flag para indicar que ya ha votado */
                 }
@@ -847,11 +851,11 @@ int validator(MinSys *s){
     } else {
         sem_wait(&(s->access));
         for (i = 0; i < MAX_MINER; i++){
-            if (s->votes[i]<0){
+            if (s->votes[i] < 0){
                 if(solhash == s->b.obj){
-                    s->votes[i]=1;
+                    s->votes[i] = 1;
                 } else {
-                    s->votes[i]=0;
+                    s->votes[i] = 0;
                 } 
                 sem_post(&(s->access));
                 return 0;
@@ -866,7 +870,7 @@ int validator(MinSys *s){
 }
 
 
-void registrador(Bloque *b){
+void registrador(Bloque* b){
     if(!b){
         printf("error en registrador: bloque vacio\n");
         exit(EXIT_FAILURE);
@@ -887,17 +891,17 @@ void registrador(Bloque *b){
 */
 void join_check(int st){
     switch (st) {
-                        case EDEADLK:
-                            printf("Deadlock detected\n");
-                            break;
-                        case EINVAL:
-                            printf("The thread is not joinable\n");
-                            break;
-                        case ESRCH:
-                            printf("No thread with given ID is found\n");
-                            break;
-                        default:
-                            printf("Error occurred when joining the thread\n");
-                    }
+        case EDEADLK:
+            printf("Deadlock detected\n");
+            break;
+        case EINVAL:
+            printf("The thread is not joinable\n");
+            break;
+        case ESRCH:
+            printf("No thread with given ID is found\n");
+            break;
+        default:
+            printf("Error occurred when joining the thread\n");
+    }
 
 }
