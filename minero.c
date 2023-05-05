@@ -551,7 +551,6 @@ void minero_logoff(MinSys *s){
 *  Output:                                         
 *  void                                            
 */
-
 void minero(long int trg, int n, unsigned int secs, int fd){
     int i=0, j=0, og=1, win=0, st;
     long int *minmax=NULL, solucion;
