@@ -516,11 +516,7 @@ void minero_logoff(MinSys *s){
     for (i = 0; i < MAX_MINER; i++){
         if(s->miners[i]==miner) s->miners[i]=-1;
     }
-    if((i=wallet_addminer(&(s->wlltfull), &(s->wllt), miner, 0))<0){
-        printf("minero_logoff: fallo en wallet_addminer");
-        munmap(s, sizeof(s));
-        return;
-    }
+
     if((i=wallet_addminer(&st, &(s->b.wlt), miner, 0))<0){
         printf("minero_logoff: fallo en wallet_addminer");
         munmap(s, sizeof(s));
