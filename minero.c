@@ -41,7 +41,7 @@ void minero_logoff(MinSys* s);
 
 /*para shm y bloque*/
 int wallet_set(Wallet* w, int miner, int flag);
-int wallet_addminer(int* stat, Wallet **w, int id, int add);
+int wallet_addminer(int* stat, Wallet** w, int id, int add);
 int coins_add(Wallet* w, int cns);
 int minsys_roundclr(MinSys* s);
 
