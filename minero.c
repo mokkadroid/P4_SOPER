@@ -4,12 +4,12 @@
 
 
 
-#ifndef F
-  #define F -1 /* FALSO */
-  #define V (!(F)) /* VERDADERO */
+#ifndef FALSE
+  #define FALSE -1 /* FALSO */
+  #define TRUE (!(FALSE)) /* VERDADERO */
 #endif
 
-int found = F;
+int found = FALSE;
 volatile sig_atomic_t usr1=0, usr2=0, cand=0, alrm=0, sint=0; 
 
 
@@ -145,7 +145,7 @@ void new_trg_set(Result **res, int n, long int trg){
         res[i]->obj=trg;
         i++;
     }
-    found=F; /*reset de found*/
+    found=FALSE; /*reset de found*/
 }
 
 
@@ -168,17 +168,17 @@ void * t_work(void* args){
         printf("t_work: fallo en argumentos\n");
         return NULL;
     }
-    if (found==V){
+    if (found==TRUE){
         /*printf("key already found\n");*/
         return NULL;
     }
 
     /*Comprobamos si se encuentra una solución*/
-    while(i<=((Result *)args)->max && found !=V){
+    while(i<=((Result *)args)->max && found == FALSE){
         res = pow_hash(i);
         if(res == ((Result *)args)->obj){
             ((Result *)args)->sol=i;/*la solucion al hash es i*/
-            found=V;
+            found=TRUE;
             /*printf("key found\n");*/
           /*una vez encontrada la clave, salimos*/
             return NULL;
