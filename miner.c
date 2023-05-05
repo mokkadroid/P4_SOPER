@@ -6,15 +6,15 @@
 
 
 int main(int argc, char const *argv[]){
-    unsigned int n, secs, mem;
+    unsigned int secs, threads, mem;
 
     if(argc!=3){
         printf("fallo en numero argumentos!\n");
         return -1;
     }
-    n = atoi(argv[1]);/* rondas */
-    secs = atoi(argv[2]);/* tiempo de ejecucion en segundos */
-    if(n<1|| secs<0){
+    secs = atoi(argv[1]);/* tiempo de ejecucion en segundos */
+    threads = atoi(argv[2]);/* numero de hilos */
+    if(secs < 0 || threads < 1){
         printf("Fallo en valor de argumentos!");
         return -1;
     }
