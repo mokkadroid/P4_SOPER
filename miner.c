@@ -8,7 +8,7 @@
 int main(int argc, const char* argv[]){
     unsigned int secs, threads, mem;
 
-    if(argc != 3){
+    if(argc !=3){
         printf("fallo en numero argumentos!\n");
         return -1;
     }

@@ -3,3 +3,7 @@
 *.pdf
 
 *.o
+
+test*
+
+miner

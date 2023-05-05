@@ -14,10 +14,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <time.h>
 #include "msgq.h"
 #include "wallet.h"
 
-#define MAX_MINER 100
 #define SHM_NAME "/shm_minersys" 
 
 
@@ -25,13 +25,13 @@
  * Struct para sistema multiminero
 */
 typedef struct {
+    int miners[MAX_MINERS]; /* array de PIDS de mineros activos*/
+    int votes[MAX_MINERS]; /* VOTOS DE CADA MINERO */
+    Wallet wllt[1000]; /* Carteras de los mineros */
     int onsys; /* mineros activos en el sistema */
-    int votes[MAX_MINER]; /* VOTOS DE CADA MINERO */
-    int miners[MAX_MINER]; /* array de PIDS de mineros activos*/
-    int last; /* bloque anterior resuelto */
+    Bloque last; /* bloque anterior resuelto */
     Bloque b; /*bloque actual*/
     int wlltfull; /* flag para indicar si la cartera esta llena */
-    Wallet wllt[1000]; /* Carteras de los mineros */
     sem_t access; /* semaforo de acceso a la zona de memoria compartida */
     sem_t barrier; /* barrera para lectura y registro del bloque */
     sem_t mutex; /* mutex para controlar la barrera */
