@@ -13,8 +13,8 @@ int main(int argc, char const *argv[]){
         return -1;
     }
     n = atoi(argv[1]);/* rondas */
-    msecs = atoi(argv[2]);/* tiempo de ejecucion en segundos */
-    if(n<1|| msecs<0){
+    secs = atoi(argv[2]);/* tiempo de ejecucion en segundos */
+    if(n<1|| secs<0){
         printf("Fallo en valor de argumentos!");
         return -1;
     }
@@ -28,7 +28,7 @@ int main(int argc, char const *argv[]){
                 return -1;
             }
             /* ponemos trg a 1 para indicarle a minero que no es el primero en conectarse al sistema */
-            minero(n, 1, 5, msecs, mem);
+            minero(1, 5, secs, mem);
             close(mem);
             return 0;
        }else{
@@ -40,7 +40,7 @@ int main(int argc, char const *argv[]){
         }
     } 
     
-    minero(n, 0, 5, secs, mem);
+    minero(0, 5, secs, mem);
     close(mem);
     return 0;
 }

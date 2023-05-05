@@ -24,13 +24,10 @@
 */
 typedef struct {
     int onsys; /* mineros activos en el sistema */
-    int nvotes; /* numero de votos */
     int votes[MAX_MINER]; /* VOTOS DE CADA MINERO */
     int miners[MAX_MINER]; /* array de PIDS de mineros activos*/
     int last; /* bloque anterior resuelto */
-    int curr; /* bloque actual por resolver*/
-    long int obj;/* objetivo a resolver */
-    long int sol;/* solucion encontrada */
+    Bloque b; /*bloque actual*/
     int wlltfull; /* flag para indicar si la cartera esta llena */
     Wallet wllt[1000]; /* Carteras de los mineros */
     sem_t access; /* semaforo de acceso a la zona de memoria compartida */
