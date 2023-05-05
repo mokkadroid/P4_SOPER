@@ -28,7 +28,7 @@ int main(int argc, char const *argv[]){
                 return -1;
             }
             /* ponemos trg a 1 para indicarle a minero que no es el primero en conectarse al sistema */
-            minero(1, 5, secs, mem);
+            minero(1, threads, secs, mem);
             close(mem);
             return 0;
        }else{
@@ -40,7 +40,7 @@ int main(int argc, char const *argv[]){
         }
     } 
     
-    minero(0, 5, secs, mem);
+    minero(0, threads, secs, mem);
     close(mem);
     shm_unlink(SHM_NAME);
     return 0;
