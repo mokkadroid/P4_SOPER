@@ -60,18 +60,19 @@ void handler_alrm(int sig){
     alrm=1;
 }
 
+
 /**
-* Funcion: res_ini                                
-*                                                 
-* @brief Inicializa struct para poder trabajar con los argumentos necesarios de entrada y 
-* retorno de la funcion del hilo 
-*                            
-* Input:                                          
-* @param trg: objetivo para resolver el hash             
-* @param inf: cota inferior del espacio de busqueda      
-* @param sup: cota superior del espacio de busqueda      
-* Output:                                         
-* Puntero struct de tipo Result                   
+*  Funcion: res_ini                                
+*                                                  
+*  @brief Inicializa struct para poder trabajar con los argumentos necesarios de entrada y 
+*  retorno de la funcion del hilo 
+*                             
+*  Input:                                          
+*  @param trg: objetivo para resolver el hash             
+*  @param inf: cota inferior del espacio de busqueda      
+*  @param sup: cota superior del espacio de busqueda      
+*  Output:                                         
+*  Puntero struct de tipo Result                   
 */
 Result * res_ini(long int trg, long int inf, long int sup){
     Result *res=NULL;
@@ -94,15 +95,17 @@ Result * res_ini(long int trg, long int inf, long int sup){
 
     return res;
 } 
+
+
 /**
-* Funcion: res_free                               
-*                                                 
-* @brief Libera array de structs Result                  
-* Input:                                          
-* @param res: array a liberar                            
-* @param n: tamaño del array                             
-* Output:                                         
-* void                                            
+*  Funcion: res_free                               
+*                                                  
+*  @brief Libera array de structs Result                  
+*  Input:                                          
+*  @param res: array a liberar                            
+*  @param n: tamaño del array                             
+*  Output:                                         
+*  void                                            
 */
 void res_free(Result **res, int n){
     int i=0;
@@ -114,16 +117,18 @@ void res_free(Result **res, int n){
     free(res);
     
 }
+
+
 /**
-* Funcion: new_trg_set                            
-*                                                 
-* @brief Actualiza objetivo de hash de un array de Results                                        
-* Input:                                          
-* @param res: array a actualizar                         
-* @param n: tamaño del array                             
-* @param trg: nuevo objetivo de hash del array           
-* Output:                                         
-* void                                            
+*  Funcion: new_trg_set                            
+*                                                  
+*  @brief Actualiza objetivo de hash de un array de Results                                        
+*  Input:                                          
+*  @param res: array a actualizar                         
+*  @param n: tamaño del array                             
+*  @param trg: nuevo objetivo de hash del array           
+*  Output:                                         
+*  void                                            
 */
 void new_trg_set(Result **res, int n, long int trg){
     int i=0;
@@ -142,15 +147,17 @@ void new_trg_set(Result **res, int n, long int trg){
     }
     found=F; /*reset de found*/
 }
+
+
 /**
-* Funcion: t_work                                 
-*                                                 
-* Trabajo asignado para cada hilo de minado en minero para la busqueda de hash   
-*              
-* Input:                                          
-* @param args: puntero a struct con los datos            
-* Output:                                         
-* void                                            
+*  Funcion: t_work                                 
+*                                                  
+*  Trabajo asignado para cada hilo de minado en minero para la busqueda de hash   
+*               
+*  Input:                                          
+*  @param args: puntero a struct con los datos            
+*  Output:                                         
+*  void                                            
 */
 void * t_work(void* args){
     long int i, res=0;
@@ -180,16 +187,18 @@ void * t_work(void* args){
     }
     return NULL;
 }
+
+
 /**
-* Funcion: round                                  
-*                                                 
-* @brief Crea los hilos que hacen la busqueda del hash y manda la solucion como nuevo target    
-*      
-* Input:                                          
-* @param res: puntero a array de datos para cada hilo    
-* @param n: numero de hilos                              
-* Output:                                         
-* El nuevo target                                 
+*  Funcion: round                                  
+*                                                  
+*  @brief Crea los hilos que hacen la busqueda del hash y manda la solucion como nuevo target    
+*       
+*  Input:                                          
+*  @param res: puntero a array de datos para cada hilo    
+*  @param n: numero de hilos                              
+*  Output:                                         
+*  El nuevo target                                 
 */
 long int round(Result **res, int n, MinSys *s){
     pthread_t *pth=NULL;
@@ -258,15 +267,17 @@ long int round(Result **res, int n, MinSys *s){
     if(count>0) free(pth);
     return new_trg;
 }
+
+
 /**
-* Funcion: divider                                
-*                                                 
-* Crea los intervalos para los espacios de busqueda para cada hilo                         
-*
-* Input:                                          
-* @param nthr: numero de hilos entre los que dividir el espacio de busqueda                    
-* Output:                                         
-* array con los limites de cada intervalo         
+*  Funcion: divider                                
+*                                                  
+*  Crea los intervalos para los espacios de busqueda para cada hilo                         
+* 
+*  Input:                                          
+*  @param nthr: numero de hilos entre los que dividir el espacio de busqueda                    
+*  Output:                                         
+*  array con los limites de cada intervalo         
 */
 long int * divider(int nthr){
    long int *minmax=NULL;
@@ -300,6 +311,8 @@ long int * divider(int nthr){
 
     return minmax;
 }
+
+
 int wallet_set(Wallet *w, int miner, int flag){
 
     if (!w || miner<0 || flag<0 ){
@@ -314,6 +327,7 @@ int wallet_set(Wallet *w, int miner, int flag){
     
 }
 
+
 int coins_add(Wallet *w, int cns){
     if(!w || cns<1){
         printf("coins_add->Fallo en argumentos\n");
@@ -323,20 +337,22 @@ int coins_add(Wallet *w, int cns){
     w->coins+=cns;
     return 0;
 }
+
+
 /**
- * Funcion: wallet_addminer
- * 
- * @brief Añade un minero al array de carteras del sistema
- * 
- * @param stat: indica si el array está lleno o no, cambia tras la adicion de la nueva cartera, 
- *              poner a -1 para eliminar la cartera de un bloque o NULL para añadirla en este.
- * @param w: array de carteras en donde se añade la del nuevo minero.
- * @param id: pid del minero.
- * @param add: 1 si se quiere añadir cartera, 0 si el minero se ha desconectado 
- *              (se sobreescribira si es necesario).
- * 
- * Output:
- * 0 si todo ok, -1 si hay error en parametros o no se ha podido añadir la cartera
+*  Funcion: wallet_addminer
+*  
+*  @brief Añade un minero al array de carteras del sistema
+*  
+*  @param stat: indica si el array está lleno o no, cambia tras la adicion de la nueva cartera, 
+*               poner a -1 para eliminar la cartera de un bloque o NULL para añadirla en este.
+*  @param w: array de carteras en donde se añade la del nuevo minero.
+*  @param id: pid del minero.
+*  @param add: 1 si se quiere añadir cartera, 0 si el minero se ha desconectado 
+*               (se sobreescribira si es necesario).
+*  
+*  Output:
+*  0 si todo ok, -1 si hay error en parametros o no se ha podido añadir la cartera
 */
 int wallet_addminer(int *stat, Wallet **w, int id, int add){
     int i=0;
@@ -392,17 +408,18 @@ int wallet_addminer(int *stat, Wallet **w, int id, int add){
     return -1;
 }
 
+
 /**
-/* Funcion: minero_map                                
-/*                                                 
-/* Se encarga de mapear el segmento de memoria compartida y conectar el minero 
-/*         
-/* Input:                                          
-/* @param buf: puntero doble a buffer memoria compartida a inicializar o actualizar             
-/* @param fd: descriptor de fichero del segmento de shm            
-/* @param og: flag para indicar si es minero que abre el sistema (1) o si se une a el (0)                             
-/* Output:                                         
-/* void                                             
+*  Funcion: minero_map                                
+*                                                  
+*  Se encarga de mapear el segmento de memoria compartida y conectar el minero 
+*          
+*  Input:                                          
+*  @param buf: puntero doble a buffer memoria compartida a inicializar o actualizar             
+*  @param fd: descriptor de fichero del segmento de shm            
+*  @param og: flag para indicar si es minero que abre el sistema (1) o si se une a el (0)                             
+*  Output:                                         
+*  void                                             
 */
 int minero_map(MinSys **s, int fd, int og){
     int i=0, st=0;
@@ -488,6 +505,7 @@ int minero_map(MinSys **s, int fd, int og){
     return st;  
 }
 
+
 void minero_logoff(MinSys *s){
     int i=0, miner, st=-1;
 
@@ -518,19 +536,22 @@ void minero_logoff(MinSys *s){
 
     munmap(s, sizeof(s));
 }
+
+
 /**
-/* Funcion: minero                                 
-/*                                                 
-/* Realiza las rondas de minado por hash que se    
-/* quieren hacer, dando un objetivo inicial        
-/* Input:                                          
-/* @param rnd: numero de rondas de minado                 
-/* @param n: numero de hilos a usar por ronda             
-/* @param trg: objetivo inicial de hash, indica si el minero es el primero a entrar en el sistema o no                
-/* @param msecs: espera entre rondas en ms                
-/* Output:                                         
-/* void                                            
+*  Funcion: minero                                 
+*                                                  
+*  Realiza las rondas de minado por hash que se    
+*  quieren hacer, dando un objetivo inicial        
+*  Input:                                          
+*  @param rnd: numero de rondas de minado                 
+*  @param n: numero de hilos a usar por ronda             
+*  @param trg: objetivo inicial de hash, indica si el minero es el primero a entrar en el sistema o no                
+*  @param msecs: espera entre rondas en ms                
+*  Output:                                         
+*  void                                            
 */
+
 void minero(long int trg, int n, unsigned int secs, int fd){
     int i=0, j=0, og=1, win=0, st;
     long int *minmax=NULL, solucion;
@@ -795,6 +816,8 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     free(minmax);
     exit(EXIT_SUCCESS);
 }
+
+
 int validator(MinSys *s){
     int pid, i=0, valid=0, voted=0;
     /* voted -> flag para que pueda emitir su voto el minero ganador una sola vez */
@@ -846,6 +869,8 @@ int validator(MinSys *s){
 
     return 0;
 }
+
+
 void registrador(Bloque *b){
     if(!b){
         printf("error en registrador: bloque vacio\n");
@@ -853,15 +878,17 @@ void registrador(Bloque *b){
     }
     exit(EXIT_SUCCESS);
 }
+
+
 /**
-/* Funcion: join_check                             
-/*                                                 
-/* Control de errores de pthread_join(), printea   
-/* por pantalla el significado del codigo de error 
-/* Input:                                          
-/* @param st: codigo de error dado por pthread_join()     
-/* Output:                                         
-/* void                                            
+*  Funcion: join_check                             
+*                                                  
+*  Control de errores de pthread_join(), printea   
+*  por pantalla el significado del codigo de error 
+*  Input:                                          
+*  @param st: codigo de error dado por pthread_join()     
+*  Output:                                         
+*  void                                            
 */
 void join_check(int st){
     switch (st) {
