@@ -35,10 +35,10 @@ long int round(Result **res, int n, MinSys *s);
 long int * divider(int nthr);
 int validator(MinSys *s);
 int minero_map(MinSys **s, int fd, int og);
-void minero_logoff(int indx);
+void minero_logoff(MinSys *s);
 /*para shm y bloque*/
 int wallet_set(Wallet *w, int miner, int flag);
-int wallet_addminer(int *stat, Wallet **w, int id);
+int wallet_addminer(int *stat, Wallet **w, int id, int add);
 int coins_add(Wallet *w, int cns);
 int minsys_roundclr(MinSys *s);
 /* proceso registrador */
@@ -61,17 +61,17 @@ void handler_alrm(int sig){
 }
 
 /**
-/* Funcion: res_ini                                
-/*                                                 
-/* Inicializa struct para poder trabajar con los   
-/* argumentos necesarios de entrada y retorno de   
-/* la funcion del hilo                             
-/* Input:                                          
-/* @param trg: objetivo para resolver el hash             
-/* @param inf: cota inferior del espacio de busqueda      
-/* @param sup: cota superior del espacio de busqueda      
-/* Output:                                         
-/* Puntero struct de tipo Result                   
+* Funcion: res_ini                                
+*                                                 
+* @brief Inicializa struct para poder trabajar con los argumentos necesarios de entrada y 
+* retorno de la funcion del hilo 
+*                            
+* Input:                                          
+* @param trg: objetivo para resolver el hash             
+* @param inf: cota inferior del espacio de busqueda      
+* @param sup: cota superior del espacio de busqueda      
+* Output:                                         
+* Puntero struct de tipo Result                   
 */
 Result * res_ini(long int trg, long int inf, long int sup){
     Result *res=NULL;
@@ -95,14 +95,14 @@ Result * res_ini(long int trg, long int inf, long int sup){
     return res;
 } 
 /**
-/* Funcion: res_free                               
-/*                                                 
-/* Libera array de structs Result                  
-/* Input:                                          
-/* @param res: array a liberar                            
-/* @param n: tamaño del array                             
-/* Output:                                         
-/* void                                            
+* Funcion: res_free                               
+*                                                 
+* @brief Libera array de structs Result                  
+* Input:                                          
+* @param res: array a liberar                            
+* @param n: tamaño del array                             
+* Output:                                         
+* void                                            
 */
 void res_free(Result **res, int n){
     int i=0;
@@ -115,15 +115,15 @@ void res_free(Result **res, int n){
     
 }
 /**
-/* Funcion: new_trg_set                            
-/*                                                 
-/* Actualiza objetivo de hash de un array de Results                                        
-/* Input:                                          
-/* @param res: array a actualizar                         
-/* @param n: tamaño del array                             
-/* @param trg: nuevo objetivo de hash del array           
-/* Output:                                         
-/* void                                            
+* Funcion: new_trg_set                            
+*                                                 
+* @brief Actualiza objetivo de hash de un array de Results                                        
+* Input:                                          
+* @param res: array a actualizar                         
+* @param n: tamaño del array                             
+* @param trg: nuevo objetivo de hash del array           
+* Output:                                         
+* void                                            
 */
 void new_trg_set(Result **res, int n, long int trg){
     int i=0;
@@ -143,14 +143,14 @@ void new_trg_set(Result **res, int n, long int trg){
     found=F; /*reset de found*/
 }
 /**
-/* Funcion: t_work                                 
-/*                                                 
-/* Trabajo asignado para cada hilo de minado en    
-/* en minero para busqueda de hash                 
-/* Input:                                          
-/* @param args: puntero a struct con los datos            
-/* Output:                                         
-/* void                                            
+* Funcion: t_work                                 
+*                                                 
+* Trabajo asignado para cada hilo de minado en minero para la busqueda de hash   
+*              
+* Input:                                          
+* @param args: puntero a struct con los datos            
+* Output:                                         
+* void                                            
 */
 void * t_work(void* args){
     long int i, res=0;
@@ -181,15 +181,15 @@ void * t_work(void* args){
     return NULL;
 }
 /**
-/* Funcion: round                                  
-/*                                                 
-/* Crea los hilos que hacen la busqueda del hash   
-/* y manda la solucion como nuevo target           
-/* Input:                                          
-/* @param res: puntero a array de datos para cada hilo    
-/* @param n: numero de hilos                              
-/* Output:                                         
-/* El nuevo target                                 
+* Funcion: round                                  
+*                                                 
+* @brief Crea los hilos que hacen la busqueda del hash y manda la solucion como nuevo target    
+*      
+* Input:                                          
+* @param res: puntero a array de datos para cada hilo    
+* @param n: numero de hilos                              
+* Output:                                         
+* El nuevo target                                 
 */
 long int round(Result **res, int n, MinSys *s){
     pthread_t *pth=NULL;
@@ -259,15 +259,14 @@ long int round(Result **res, int n, MinSys *s){
     return new_trg;
 }
 /**
-/* Funcion: divider                                
-/*                                                 
-/* Crea los intervalos para los espacios de        
-/* busqueda para cada hilo                         
-/* Input:                                          
-/* @param nthr: numero de hilos entre los que dividir    
-/* el espacio de busqueda                    
-/* Output:                                         
-/* array con los limites de cada intervalo         
+* Funcion: divider                                
+*                                                 
+* Crea los intervalos para los espacios de busqueda para cada hilo                         
+*
+* Input:                                          
+* @param nthr: numero de hilos entre los que dividir el espacio de busqueda                    
+* Output:                                         
+* array con los limites de cada intervalo         
 */
 long int * divider(int nthr){
    long int *minmax=NULL;
@@ -324,32 +323,74 @@ int coins_add(Wallet *w, int cns){
     w->coins+=cns;
     return 0;
 }
-
-int wallet_addminer(int *stat, Wallet **w, int id){
+/**
+ * Funcion: wallet_addminer
+ * 
+ * @brief Añade un minero al array de carteras del sistema
+ * 
+ * @param stat: indica si el array está lleno o no, cambia tras la adicion de la nueva cartera, 
+ *              poner a -1 para eliminar la cartera de un bloque o NULL para añadirla de este.
+ * @param w: array de carteras en donde se añade la del nuevo minero.
+ * @param add: 1 si se quiere añadir cartera, 0 si el minero se ha desconectado 
+ *              (se sobreescribira si es necesario).
+ * 
+ * Output:
+ * 0 si todo ok, -1 si hay error en parametros o no se ha podido añadir la cartera
+*/
+int wallet_addminer(int *stat, Wallet **w, int id, int add){
     int i=0;
 
     if(!w || id<0){
         printf("wallet_addminer -> fallo en argumentos\n");
-        return -2;
+        return -1;
     }
 
-    for (i = 0; i < 1000; i++){
-        if (stat && (*stat)==1000 && w[i]->active==0){
-            w[i]->pid = id;
-            w[i]->active=1;
-            w[i]->coins=0;
-            return 0;
+    if(add==0 && (*stat)>=0){
+        for (i = 0; i < 1000; i++){
+            if (id==w[i]->pid){
+                w[i]->active=0;
+                return 0;
+            }
         }
-        if (w[i]->active<0){ /* solo sera <0 si el hueco esta libre */
-            w[i]->pid = id;
-            w[i]->active=1;
-            w[i]->coins=0;
-            (*stat)++;
-            return 0;
+    } else if(add==0 && (*stat)==-1){
+        for (i = 0; i < MAX_MINER; i++){
+            if (id==w[i]->pid){
+                w[i]->active=-1;
+                w[i]->coins=0;
+                w[i]->pid=-1;
+                return 0;
+            }
+        }
+    } else if (add==1 && !stat){
+        for (i = 0; i < MAX_MINER; i++){
+            if(w[i]->pid<0){
+                w[i]->pid = id;
+                w[i]->active=1;
+                w[i]->coins=0;
+                return 0;  
+            }
+        }
+        
+    } else if (add==1 && stat){
+        for (i = 0; i < 1000; i++){
+            if ((*stat)==1000 && w[i]->active==0){
+                w[i]->pid = id;
+                w[i]->active=1;
+                w[i]->coins=0;
+                return 0;
+            }
+            if (w[i]->active<0){ /* solo sera <0 si el hueco esta libre */
+                w[i]->pid = id;
+                w[i]->active=1;
+                w[i]->coins=0;
+                (*stat)++;
+                return 0;
+            }
         }
     }
     return -1;
 }
+
 /**
 /* Funcion: mineroMap                                
 /*                                                 
@@ -444,6 +485,37 @@ int minero_map(MinSys **s, int fd, int og){
         sem_post(&((*s)->access));
    }    
     return st;  
+}
+
+void minero_logoff(MinSys *s){
+    int i=0, miner, st=-1;
+
+    if(!s) return;
+    miner=getpid();
+    sem_wait(&(s->access));
+    s->onsys--;
+    for (i = 0; i < MAX_MINER; i++){
+        if(s->miners[i]==miner) s->miners[i]=-1;
+    }
+    if((i=wallet_addminer(&(s->wlltfull), &(s->wllt), miner, 0))<0){
+        printf("minero_logoff: fallo en wallet_addminer");
+        munmap(s, sizeof(s));
+        return;
+    }
+    if((i=wallet_addminer(&st, &(s->b.wlt), miner, 0))<0){
+        printf("minero_logoff: fallo en wallet_addminer");
+        munmap(s, sizeof(s));
+        return;
+    }
+
+    if(s->onsys==0){
+        sem_destroy(&(s->barrier));
+        sem_destroy(&(s->mutex));
+        sem_post(&(s->access));
+        sem_destroy(&(s->access));
+    }
+
+    munmap(s, sizeof(s));
 }
 /**
 /* Funcion: minero                                 
@@ -570,7 +642,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     minmax=divider(n);
     if(!minmax){
         printf("Minero: Error en minmax\n");
-        munmap(systmin, sizeof(systmin));
+        minero_logoff(systmin);
         exit(EXIT_FAILURE);
     }
 
@@ -578,7 +650,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     res=(Result**)malloc(n*sizeof(Result*));
     if (res==NULL){
         perror("Minero: Error en res, ");
-        munmap(systmin, sizeof(systmin));
+        minero_logoff(systmin);
         free(minmax);
         exit(EXIT_FAILURE);
     }
@@ -594,7 +666,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
                 free(res[i]);
                 i--;
             }
-            munmap(systmin, sizeof(systmin));
+            minero_logoff(systmin);
             free(res);
             free(minmax);
             exit(EXIT_FAILURE);
@@ -614,7 +686,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
            /*if((q = mq_open(MQ_NAME, O_WRONLY | O_NONBLOCK, S_IRUSR | S_IWUSR,  &attributes)) == (mqd_t)-1){
                 /*Control de errores sobre la memoria compartida*/
                /* perror("mq_open");
-               munmap(systmin, sizeof(systmin));
+                minero_logoff(systmin);
                 res_free(res, n);
                 free(minmax);
                 exit(EXIT_FAILURE);
@@ -623,7 +695,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         /*}else{
             /*Mostramos si ha habido errores y salimos*/
             /*perror("mq_open");
-            munmap(systmin, sizeof(systmin));
+            minero_logoff(systmin);
             res_free(res, n);
             free(minmax);
             mq_unlink(MQ_NAME);
@@ -692,7 +764,6 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         if((st=validator(systmin))<0){
             printf("minero: error en validador\n");
             minero_logoff(systmin);
-            munmap(systmin, sizeof(systmin));
             res_free(res, n);
             free(minmax);
             exit(EXIT_FAILURE);
@@ -705,7 +776,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         sem_wait(&(systmin->mutex));
         systmin->count++;
         sem_post(&(systmin->mutex));
-        /* ponemos >= por si hay algun minero que ha votado pero se ha leido su voto*/
+        /* ponemos >= por si hay algun minero que haya votado pero no se haya leido su voto*/
         if(systmin->count >= systmin->b.votes[1]) sem_post(&(systmin->barrier));
         sem_wait(&(systmin->barrier));
         sem_post(&(systmin->barrier));
@@ -718,6 +789,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     }
     /* liberado de memoria */
     /*mq_close(q);*/
+    minero_logoff(systmin);
     res_free(res, n);
     free(minmax);
     exit(EXIT_SUCCESS);
