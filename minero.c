@@ -1,6 +1,5 @@
 
 #include "minero.h"
-#include "msgq.h"
 #include "pow.h"
 
 
@@ -242,12 +241,11 @@ long int round(Result **res, int n, MinSys *s){
             }
             /* accedemos a memoria para actualizar el bloque que se acaba de resolver */
             sem_wait(&(s->access));
-            if(s->sol<0){ /* Comprobamos que sea el primer minero en acceder */
-                st=s->curr +1; /*usamos st como auxiliar para cambiar el id del bloque */
-                s->last=s->curr;
-                s->curr=st;
-                s->sol=new_trg;
-                s->blockwin=getpid();
+            if(s->b.sol<0){ /* Comprobamos que sea el primer minero en acceder */
+                s->last=s->b.id;
+                s->b.id++;
+                s->b.sol=new_trg;
+                s->b.pid=getpid();
                 win=1;
                 printf("Solucion de ronda: %08ld\n", new_trg);
             }
@@ -255,7 +253,7 @@ long int round(Result **res, int n, MinSys *s){
         } 
         
     }
-    usr2=0; /* resetemos la flag de usr2 para poder indicar luego el comienzo de la votacion */
+    usr2=0; /* reseteamos la flag de usr2 para poder indicar luego el comienzo de la votacion */
     if(win==0) new_trg=-2;
     if(count>0) free(pth);
     return new_trg;
@@ -360,9 +358,9 @@ int wallet_addminer(int *stat, Wallet **w, int id){
 /* Input:                                          
 /* @param buf: puntero doble a buffer memoria compartida a inicializar o actualizar             
 /* @param fd: descriptor de fichero del segmento de shm            
-/* @param og: flag para indicar si es minero que abre el sistema o si se une a el                                 
+/* @param og: flag para indicar si es minero que abre el sistema (1) o si se une a el (0)                             
 /* Output:                                         
-/* void                                            
+/* void                                             
 */
 int minero_map(MinSys **s, int fd, int og){
     int i=0, st=0;
@@ -381,14 +379,13 @@ int minero_map(MinSys **s, int fd, int og){
         sem_init(&((*s)->access), 1, 1); /* inicializamos primero el semaforo */
         sem_wait(&((*s)->access)); /*bloqueamos el acceso a los datos*/
         (*s)->onsys=1;
-        (*s)->nvotes=0;
         (*s)->last=-1; /* antes no se ha resuelto ninguno */
         (*s)->wlltfull=0;
         (*s)->b.obj=0;
         (*s)->b.sol=-1;
-        (*s)->b.id=0;
-        (*s)->b.votes[0]=0;
-        (*s)->b.votes[1]=0;
+        (*s)->b.id=0;/*id del bloque actual por resolver */
+        (*s)->b.votes[0]=0; /*votos a favor*/
+        (*s)->b.votes[1]=0;/*votos totales*/
         /*inicializamos el array de mineros activos*/
         for (i = 0; i < MAX_MINER; i++){ 
             if (i==0) (*s)->miners[i]=getpid();
@@ -442,7 +439,6 @@ int minero_map(MinSys **s, int fd, int og){
                printf("minero_map: fallo en wallet_addminer para bloque\n");
                return -1; 
             }
-
         }
         
         sem_post(&((*s)->access));
@@ -470,7 +466,6 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     struct mq_attr attributes;
     Bloque msg;
     MinSys *systmin=NULL;
-    
     struct sigaction act1, act2, actint, actlrm;
     sigset_t set, oset;
 
@@ -548,6 +543,15 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     
     /* abrimos shm */
     if(trg==0){
+        if (ftruncate(fd, sizeof(systmin)) == -1){
+            /*Mostramos mensajes de error y perror si ha habido 
+            algún error durante la llamada a ftruncate*/
+            printf("Error al reservar la memoria compartida.\n");
+            perror("Ftruncate");
+            /*Cerramos la memoria*/
+            close(fd);
+            exit(EXIT_FAILURE);
+        }
         if((st=mineroMap(&systmin, fd, 1))<0){
             printf("minero: Error de mineroMap\n");
             munmap(systmin, sizeof(systmin));
@@ -633,6 +637,11 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     while (alrm < 1 || sint < 1){
         /* Si es el ganador o el primer minero, manda USR1 para iniciar minado */
         if(win==1){
+            sem_wait(&(systmin->access));
+            sem_init(&(systmin->barrier), 1, 0);
+            sem_init(&(systmin->mutex), 1, 1);
+            systmin->count=0;
+            sem_post(&(systmin->access));
             j=0;
             for (i = 0; i < MAX_MINER; i++){
                 if(systmin->miners[i]>-1){
@@ -651,13 +660,13 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         sigprocmask (SIG_UNBLOCK, &set, NULL);
         usr1=0; /*reseteamos la flag de USR1*/
         solucion=round(res,n, systmin);
-        if(solucion<0){  
+        if(solucion==-1){  
             printf("Fallo en ronda\n");
             /*mq_close(q);*/
             res_free(res, n);
             free(minmax);
             exit(EXIT_FAILURE);
-        } else if (solucion>0){
+        } else if (solucion>=0){
             win=1; /*indicamos que es el ganador de la ronda para la proxima iteracion */
             /* mandamos señal para comenzar a votar */
             j=0;
@@ -688,12 +697,24 @@ void minero(long int trg, int n, unsigned int secs, int fd){
             free(minmax);
             exit(EXIT_FAILURE);
         }
-        msg.id=systmin->last;
-        msg.obj=systmin->b.obj;
-        msg.sol=systmin->b.sol;
-        msg.pid=systmin->b.pid;
-
-        new_trg_set(res, n, solucion);
+        /**
+         * para asegurarnos que todos los los procesos han salido 
+         * de la votacion, y no se registre mal el bloque en ningun
+         * caso, se ha implementado una barrera:
+        */
+        sem_wait(&(systmin->mutex));
+        systmin->count++;
+        sem_post(&(systmin->mutex));
+        /* ponemos >= por si hay algun minero que ha votado pero se ha leido su voto*/
+        if(systmin->count >= systmin->b.votes[1]) sem_post(&(systmin->barrier));
+        sem_wait(&(systmin->barrier));
+        sem_post(&(systmin->barrier));
+        /* aqui mandariamos por tuberia el bloque a registrador */
+        if(win==1){
+            printf("Bloque a registrar:\n");
+            printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n", systmin->b.id, systmin->b.obj, systmin->b.sol, systmin->b.votes[0], systmin->b.votes[1]);
+        }
+        new_trg_set(res, n, systmin->b.sol);
     }
     /* liberado de memoria */
     /*mq_close(q);*/
@@ -745,6 +766,9 @@ int validator(MinSys *s){
                 return 0;
             }
         }
+        sem_post(&(s->access));
+        printf("[%d] no ha podido votar\n", getpid());
+        return -1;
     }
 
     return 0;

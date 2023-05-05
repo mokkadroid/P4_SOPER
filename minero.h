@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include "msgq.h"
 
 #define MAX_MINER 100
 #define SHM_NAME "/shm_minersys" 
@@ -31,6 +32,9 @@ typedef struct {
     int wlltfull; /* flag para indicar si la cartera esta llena */
     Wallet wllt[1000]; /* Carteras de los mineros */
     sem_t access; /* semaforo de acceso a la zona de memoria compartida */
+    sem_t barrier; /* barrera para lectura y registro del bloque */
+    sem_t mutex; /* mutex para controlar la barrera */
+    int count; /* contador para la barrera */
 } MinSys; 
 
 typedef struct {

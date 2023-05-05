@@ -42,5 +42,6 @@ int main(int argc, char const *argv[]){
     
     minero(0, 5, secs, mem);
     close(mem);
+    shm_unlink(SHM_NAME);
     return 0;
 }
