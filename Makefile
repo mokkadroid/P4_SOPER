@@ -1,6 +1,6 @@
 CC = gcc -g -ansi -pedantic -D_POSIX_C_SOURCE -pthread -lpthread
 CFLAGS = -Wall
-EXE = miner monitor
+EXE = miner
 VAL = @valgrind --leak-check=full --track-origins=yes
 
 all : $(EXE)
@@ -23,7 +23,7 @@ pow.o : pow.c pow.h
 	@echo "# Has changed $<"
 	$(CC) $(CFLAGS) -c $<
 
-minero.o : minero.c minero.h msgq.h
+minero.o : minero.c minero.h msgq.h wallet.h
 	@echo "#---------------------------"
 	@echo "# Generating $@ "
 	@echo "# Depends on $^"

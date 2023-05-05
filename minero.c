@@ -329,8 +329,9 @@ int coins_add(Wallet *w, int cns){
  * @brief Añade un minero al array de carteras del sistema
  * 
  * @param stat: indica si el array está lleno o no, cambia tras la adicion de la nueva cartera, 
- *              poner a -1 para eliminar la cartera de un bloque o NULL para añadirla de este.
+ *              poner a -1 para eliminar la cartera de un bloque o NULL para añadirla en este.
  * @param w: array de carteras en donde se añade la del nuevo minero.
+ * @param id: pid del minero.
  * @param add: 1 si se quiere añadir cartera, 0 si el minero se ha desconectado 
  *              (se sobreescribira si es necesario).
  * 
@@ -392,7 +393,7 @@ int wallet_addminer(int *stat, Wallet **w, int id, int add){
 }
 
 /**
-/* Funcion: mineroMap                                
+/* Funcion: minero_map                                
 /*                                                 
 /* Se encarga de mapear el segmento de memoria compartida y conectar el minero 
 /*         
@@ -406,7 +407,7 @@ int wallet_addminer(int *stat, Wallet **w, int id, int add){
 int minero_map(MinSys **s, int fd, int og){
     int i=0, st=0;
     if(fd<0 || og<0){
-        printf("mineroMap: fallo en args\n");
+        printf("minero_map: fallo en args\n");
         return -1;
     }
     /*Comprobamos si se asigna correctamente la sección de memoria a la variable buf*/
@@ -437,19 +438,19 @@ int minero_map(MinSys **s, int fd, int og){
         for (i = 0; i < (MAX_MINER*10); i++){
             if (i==0){
                 if ((st=wallet_set(&((*s)->wllt[i]), (*s)->miners[i], 1))<0){
-                    printf("mineroMap: fallo en wallet_set\n");
+                    printf("minero_map: fallo en wallet_set\n");
                     return -1;
                 }
                 if ((st=wallet_set(&((*s)->b.wlt[i]), (*s)->miners[i], 1))<0){
-                    printf("mineroMap: fallo en wallet_set para bloque\n");
+                    printf("minero_map: fallo en wallet_set para bloque\n");
                     return -1; 
                 }
                 (*s)->wlltfull++;
             } else if ((st=wallet_set(&((*s)->wllt[i]), 0, -1))<0){
-                    printf("mineroMap: fallo en wallet_set\n");
+                    printf("minero_map: fallo en wallet_set\n");
                     return -1; 
             } else if ((st=wallet_set(&((*s)->b.wlt[i]), 0, -1))<0){
-                printf("mineroMap: fallo en wallet_set para bloque\n");
+                printf("minero_map: fallo en wallet_set para bloque\n");
                 return -1; 
             }
         }
@@ -470,12 +471,12 @@ int minero_map(MinSys **s, int fd, int og){
         }
         /* Si se ha podido unir al sistema, se crea una cartera */
         if (st==1){
-            if((st=wallet_addminer(&((*s)->wlltfull), &((*s)->wllt), getpid()))<0){
+            if((st=wallet_addminer(&((*s)->wlltfull), &((*s)->wllt), getpid(), 1))<0){
                sem_post(&((*s)->access));
                printf("minero_map: fallo en wallet_addminer\n");
                return -1; 
             }
-            if((st=wallet_addminer(NULL, &((*s)->b.wlt), getpid()))<0){
+            if((st=wallet_addminer(NULL, &((*s)->b.wlt), getpid(), 1))<0){
                sem_post(&((*s)->access));
                printf("minero_map: fallo en wallet_addminer para bloque\n");
                return -1; 
@@ -624,16 +625,16 @@ void minero(long int trg, int n, unsigned int secs, int fd){
             close(fd);
             exit(EXIT_FAILURE);
         }
-        if((st=mineroMap(&systmin, fd, 1))<0){
-            printf("minero: Error de mineroMap\n");
+        if((st=minero_map(&systmin, fd, 1))<0){
+            printf("minero: Error de minero_map\n");
             munmap(systmin, sizeof(systmin));
             exit(EXIT_FAILURE);
         } 
         win++;
 
     } else {
-        if((st=mineroMap(&systmin, fd, 0))<0){
-            printf("minero: Error de mineroMap\n");
+        if((st=minero_map(&systmin, fd, 0))<0){
+            printf("minero: Error de minero_map\n");
             munmap(systmin, sizeof(systmin));
             exit(EXIT_FAILURE);
         }

@@ -1,7 +1,9 @@
 #include <mqueue.h>
 #include "minero.h"
+#include "wallet.h"
 
 #define MQ_NAME "/mq_minero"
+#define MAX_MINER 100
 
 /**
  * Estructura para cada bloque de la cola

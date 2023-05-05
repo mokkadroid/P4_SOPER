@@ -15,6 +15,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include "msgq.h"
+#include "wallet.h"
 
 #define MAX_MINER 100
 #define SHM_NAME "/shm_minersys" 
@@ -36,13 +37,6 @@ typedef struct {
     sem_t mutex; /* mutex para controlar la barrera */
     int count; /* contador para la barrera */
 } MinSys; 
-
-typedef struct {
-    long int pid; /* pid del minero */
-    int coins; /* numero de monedas */
-    int active; /*Indica si el minero esta activo*/
-}Wallet;
-
 
 /**
  * Función principal de minero
