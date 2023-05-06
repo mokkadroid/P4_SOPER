@@ -5,15 +5,15 @@
 #include "minero.h"
 
 
-int main(int argc, char const *argv[]){
+int main(int argc, const char* argv[]){
     unsigned int n, secs, mem;
 
-    if(argc!=3){
+    if(argc!=2){
         printf("fallo en numero argumentos!\n");
         return -1;
     }
-    n = atoi(argv[1]);/* rondas */
-    secs = atoi(argv[2]);/* tiempo de ejecucion en segundos */
+    n = atoi(argv[1]);/* hilos */
+    secs = atoi(argv[1]);/* tiempo de ejecucion en segundos */
     if(n<1|| secs<0){
         printf("Fallo en valor de argumentos!");
         return -1;
@@ -35,12 +35,11 @@ int main(int argc, char const *argv[]){
             /*Mostramos si ha habido errores y salimos*/
             perror("shm_open");
             shm_unlink(SHM_NAME);
-         
             return -1;
         }
     } 
     
-    minero(0, 5, secs, mem);
+    minero(0, n, secs, mem);
     close(mem);
     shm_unlink(SHM_NAME);
     return 0;

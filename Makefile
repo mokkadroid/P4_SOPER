@@ -14,7 +14,7 @@ miner: miner.o pow.o minero.o
 	@echo "# Generating $@"
 	@echo "# Depends on $^"
 	@echo "# Has changed $<"
-	$(CC) $(CFLAGS) -o $@ $@.c pow.o minero.o
+	$(CC) $(CFLAGS) -o $@ $@.c pow.o minero.o -lrt 
 
 pow.o : pow.c pow.h
 	@echo "#---------------------------"
@@ -28,4 +28,4 @@ minero.o : minero.c minero.h msgq.h wallet.h
 	@echo "# Generating $@ "
 	@echo "# Depends on $^"
 	@echo "# Has changed $<"
-	$(CC) $(CFLAGS) -c $< -lrt 
+	$(CC) $(CFLAGS) -c $< 

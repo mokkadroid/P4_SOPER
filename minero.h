@@ -17,7 +17,6 @@
 #include "msgq.h"
 #include "wallet.h"
 
-#define MAX_MINER 100
 #define SHM_NAME "/shm_minersys" 
 
 
@@ -26,10 +25,10 @@
 */
 typedef struct {
     int onsys; /* mineros activos en el sistema */
-    int votes[MAX_MINER]; /* VOTOS DE CADA MINERO */
-    int miners[MAX_MINER]; /* array de PIDS de mineros activos*/
-    int last; /* bloque anterior resuelto */
-    Bloque b; /*bloque actual*/
+    int votes[MAX_MINERS]; /* VOTOS DE CADA MINERO */
+    int miners[MAX_MINERS]; /* array de PIDS de mineros activos*/
+    Bloque last; /* bloque anterior resuelto */
+    Bloque current; /*bloque actual*/
     int wlltfull; /* flag para indicar si la cartera esta llena */
     Wallet wllt[1000]; /* Carteras de los mineros */
     sem_t access; /* semaforo de acceso a la zona de memoria compartida */
