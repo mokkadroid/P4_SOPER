@@ -470,8 +470,9 @@ int minero_map(MinSys **syst, int fd, int og){
         (*syst)->current.votes[0]=0; /*votos a favor*/
         (*syst)->current.votes[1]=0;/*votos totales*/
         (*syst)->wlltfull=0;
-        /*inicializamos el array de mineros activos*/
+        /*inicializamos el array de mineros activos y el de votos*/
         (*syst)->miners[0]=getpid();
+        (*syst)->votes[0]=-1;
         for (i = 1; i < MAX_MINERS; i++){ 
             (*syst)->miners[i]=-1;
             (*syst)->votes[i]=-1;
@@ -499,7 +500,7 @@ int minero_map(MinSys **syst, int fd, int og){
         printf("Accediendo a shm\n");
         sem_wait(&((*syst)->access));
         if((*syst)->onsys == 0){
-            perror("El sistema esta siendo liberado o ha ocurrido lo siguiente: ");
+            printf("El sistema esta siendo liberado");
             return -1;
         }
         for (i = 0; i < MAX_MINERS; i++){ 
@@ -836,6 +837,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         }
         sem_post(&(systmin->access));
         new_trg_set(res, n, systmin->current.obj);
+        printf("estado señales: %d(SIGINT) %d(SIGALRM)", sint, alrm);
     }
     /* liberado de memoria */
     /*mq_close(q);*/
@@ -863,19 +865,16 @@ int validator(MinSys* syst){
         for (i = 0; i < syst->onsys; i++){ /* comprueba tantas veces como mineros conectados haya*/
             usleep(250*1000);/*espera inactiva de 250ms*/
             sem_wait(&(syst->access));
-            printf("%d \n", syst->votes[i]);
             if(syst->votes[i] != -1){
                 syst->current.votes[0] += syst->votes[i];/*votos a favor*/
                 syst->current.votes[1]++;/*votos totales*/
             } else {
-                printf("Vamos a votar\n");
                 if(voted == 0){ 
                     if(solhash == syst->current.obj){
                         syst->votes[i] = 1;
                     } else {
                         syst->votes[i] = 0;
                     }
-                    printf("He votado %d\n", syst->votes[i]);
                     syst->current.votes[0] += syst->votes[i];/*votos a favor*/
                     syst->current.votes[1]++;/*votos totales*/
                     voted++;/* se sube la flag para indicar que ya ha votado */

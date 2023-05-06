@@ -13,7 +13,7 @@ int main(int argc, const char* argv[]){
         return -1;
     }
     n = atoi(argv[1]);/* hilos */
-    secs = atoi(argv[1]);/* tiempo de ejecucion en segundos */
+    secs = atoi(argv[2]);/* tiempo de ejecucion en segundos */
     if(n<1|| secs<0){
         printf("Fallo en valor de argumentos!");
         return -1;
