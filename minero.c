@@ -255,18 +255,20 @@ long int round(Result** res, int n, MinSys* s){
             /* accedemos a memoria para actualizar el bloque que se acaba de resolver */
             sem_wait(&(s->access));
             if (s->b.sol<0){ /* Comprobamos que sea el primer minero en acceder */
-                s->last.id = s->b.id;
-                s->last.sol = new_trg;
-                s->last.obj = s->b.obj;
-                s->last.votes[0] = s->b.votes[0];
-                s->last.votes[2] = s->b.votes[1];
-                for (i = 0; i < MAX_MINERS; i++){
-                    s->last.wlt[i] = s->b.wlt[i];
+                syst->b.sol = new_trg;             
+                syst->b.pid = getpid();
+              /* Obtenemos las carteras de los mineros activos en este momento*/
+                j=0;
+                for (i = 0; i < 1000; i++){
+                    if (syst->wllt[i].active == 1){
+                        syst->b.wllt[j].active = syst->wllt[i].active;
+                        syst->b.wllt[j].coins = syst->wllt[i].coins;
+                        syst->b.wllt[j].pid = syst->wllt[i].pid;
+                        j++;
+                    }
+                    if (j == syst->onsys) break;
                 }
-                s->last.pid = getpid();
-                s->last.pid = s->b.pid;
-                s->b.id++;
-                s->b.obj = new_trg;
+               
                 win = 1;
                 printf("Solucion de ronda: %08ld\n", new_trg);
             }
