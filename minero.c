@@ -418,7 +418,46 @@ int wallet_addminer(int* stat, Wallet* w, int id, int add){
     }
     return -1;
 }
+/**
+ * Funcion: minsys_roundclr
+ * 
+ * @brief Prepara el sistema para la ronda siguiente: transfiere el ultimo bloque minado a
+ * last y deja current con el array de carteras vacio y el nuevo objetivo de minado
+ * 
+ * @param syst: puntero al sistema de mineros
+ * 
+ * Output:
+ * 0 si todo OK, -1 en caso de error
+*/
+int minsys_roundclr(MinSys* s){
+ int i=0;
 
+   if(!syst){
+        printf("fallo en minsys_roundclr: argumentos");
+        return -1;
+   }
+   syst->last.id = syst->b.id;
+   syst->last.pid = syst->b.pid;
+   syst->last.obj = syst->b.obj;
+   syst->last.sol = syst->b.sol;
+   syst->last.votes[0] = syst->b.votes[0];
+   syst->b.votes[0] = 0;
+   syst->last.votes[1] = syst->b.votes[1];
+   syst->b.votes[1] = 0;
+   for (i = 0; i < MAX_MINERS; i++){
+        if (syst->last.wllt[i].active == 1){
+            syst->last.wllt[i].active = syst->b.wllt[i].active;
+            syst->last.wllt[i].coins = syst->b.wllt[i].coins;
+            syst->last.wllt[i].pid = syst->b.wllt[i].pid;
+            syst->b.wllt[i].active = -1; /* se "borra" la cartera ya copiada */
+        }    
+   }
+   syst->b.obj = syst->last.sol;
+   syst->b.id++;
+   syst->b.sol=-1;
+   
+   return 0; 
+}  
 
 /**
 *  Funcion: minero_map                                
@@ -495,11 +534,6 @@ int minero_map(MinSys** s, int fd, int og){
             if((st = wallet_addminer(&((*s)->wlltfull), (*s)->wllt, getpid(), 1)) < 0){
                sem_post(&((*s)->access));
                printf("minero_map: fallo en wallet_addminer\n");
-               return -1; 
-            }
-            if((st = wallet_addminer(NULL, (*s)->b.wlt, getpid(), 1)) < 0){
-               sem_post(&((*s)->access));
-               printf("minero_map: fallo en wallet_addminer para bloque\n");
                return -1; 
             }
         }
@@ -768,11 +802,24 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         sem_wait(&(systmin->barrier));
         sem_post(&(systmin->barrier));
         /* aqui mandariamos por tuberia el bloque a registrador */
-        if(win == 1){
+        sem_post(&(systmin->access));
+        if(win==1){
             printf("Bloque a registrar:\n");
-            printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n", systmin->b.id, systmin->b.pid, systmin->b.obj, systmin->b.sol, systmin->b.votes[0], systmin->b.votes[1]);
+            printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n", systmin->b.id, systmin->b.pid, systmin->b.obj,
+             systmin->b.sol, systmin->b.votes[0], systmin->b.votes[1]);
+            
+            st=minsys_roundclr(systmin);
+            if (st<0){
+                sem_post(&(systmin->access));
+                minero_logoff(systmin);
+                res_free(res, n);
+                free(minmax);
+                exit(EXIT_FAILURE);
+            }
+            
         }
-        new_trg_set(res, n, systmin->b.sol);
+        sem_post(&(systmin->access));
+        new_trg_set(res, n, systmin->b.obj);
     }
     /* liberado de memoria */
     /*mq_close(q);*/
