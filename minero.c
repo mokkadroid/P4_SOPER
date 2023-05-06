@@ -728,7 +728,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
 
 
     /* Bucle de ejecucion de las rondas */
-    while (alrm < 1 || sint < 1){
+    while (alrm < 1 && sint < 1){
         /* Si es el ganador o el primer minero, manda USR1 para iniciar minado */
         if(win==1){
             sem_wait(&(systmin->access));
