@@ -13,6 +13,6 @@ typedef struct {
     long int obj;   /* Objetivo del bloque*/
     int votes[2]; /* [0]-> a favor | [1]-> totales*/
     int pid; /* PID del minero ganador */
-    Wallet wlt[MAX_MINERS]; /*wallets*/
+    Wallet wllt[MAX_MINERS];
 } Bloque;
 /* sol=-2 -> Codigo de error */

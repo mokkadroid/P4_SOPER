@@ -6,15 +6,15 @@
 
 
 int main(int argc, const char* argv[]){
-    unsigned int secs, threads, mem;
+    unsigned int n, secs, mem;
 
-    if(argc !=3){
+    if(argc!=3){
         printf("fallo en numero argumentos!\n");
         return -1;
     }
+    n = atoi(argv[1]);/* hilos */
     secs = atoi(argv[1]);/* tiempo de ejecucion en segundos */
-    threads = atoi(argv[2]);/* numero de hilos */
-    if(secs < 0 || threads < 1){
+    if(n<1|| secs<0){
         printf("Fallo en valor de argumentos!");
         return -1;
     }
@@ -28,19 +28,18 @@ int main(int argc, const char* argv[]){
                 return -1;
             }
             /* ponemos trg a 1 para indicarle a minero que no es el primero en conectarse al sistema */
-            minero(1, threads, secs, mem);
+            minero(1, 5, secs, mem);
             close(mem);
             return 0;
        }else{
             /*Mostramos si ha habido errores y salimos*/
             perror("shm_open");
             shm_unlink(SHM_NAME);
-         
             return -1;
         }
     } 
     
-    minero(0, threads, secs, mem);
+    minero(0, n, secs, mem);
     close(mem);
     shm_unlink(SHM_NAME);
     return 0;
