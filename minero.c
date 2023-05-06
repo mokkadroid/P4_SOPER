@@ -76,7 +76,7 @@ void handler_alrm(int sig){
 Result * res_ini(long int trg, long int inf, long int sup){
     Result *res=NULL;
     /* Control de errores de los argumentos*/
-    if(trg<0 || inf >= sup || inf<0 || sup<0){
+    if(trg<0 ||inf >= sup || inf<0 || sup<0){
         printf("res_ini: fallo en argumentos\n");
         return NULL;
     }
@@ -463,7 +463,7 @@ int minero_map(MinSys **syst, int fd, int og){
         /* Bloque anterior */
         (*syst)->last.obj=0;
         (*syst)->last.sol=-1;
-        (*syst)->last.id=-1; /* antes no se ha resuelto ninguno */
+        (*syst)->last.id=0; /* antes no se ha resuelto ninguno */
         (*syst)->last.votes[0]=0; /*votos a favor*/
         (*syst)->last.votes[1]=0;/*votos totales*/
         /* Bloque actual */
@@ -666,8 +666,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
             munmap(systmin, sizeof(MinSys));
             exit(EXIT_FAILURE);
         } 
-        win++;
-
+        win=1;
     } else {
         printf("accediendo a sistema\n");
         st = minero_map(&systmin, fd, 0);
@@ -695,26 +694,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         free(minmax);
         exit(EXIT_FAILURE);
     }
-     
-    if(trg>0) trg = systmin->current.obj; /* Si no es el primer minero en conectarse al sistema, 
-                                 * se pone como objetivo de busqueda lo que haya en shm */
-    for (i = 0; i < n; i++){
-        res[i] = res_ini(trg, minmax[j], minmax[j+1]);
-        if (res[i] == NULL){
-            printf("Minero: Error en bucle de res\n");
-            i--;
-            while (i >= 0) {
-                free(res[i]);
-                i--;
-            }
-            minero_logoff(systmin);
-            munmap(systmin, sizeof(MinSys));
-            free(res);
-            free(minmax);
-            exit(EXIT_FAILURE);
-        }
-        j+=2;
-    }
+    
     /* Abrimos cola */
     /*atributos de la cola
     attributes.mq_flags = 0;
@@ -761,14 +741,15 @@ void minero(long int trg, int n, unsigned int secs, int fd){
             sem_post(&(systmin->access));
             j = 0;
             for (i = 0; i < MAX_MINERS; i++){
-                if(systmin->miners[i]>-1){
+                if(systmin->miners[i]>0){
                     kill(systmin->miners[i], SIGUSR1);
                     j++;
+                    printf("USR1 mandada a %d (%d / %d)\n", systmin->miners[i], j, systmin->onsys);
                 }
                 if(j == systmin->onsys) break;
-            }
-            win = 0; 
-        }
+            } 
+        }  
+        printf("Pid %u esperando a USR1\n", getpid());   
         /* Esperamos USR1 para comenzar ronda de minado */
         sigemptyset(&set);
         sigaddset(&set, SIGUSR1);
@@ -776,6 +757,29 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         while (usr1 == 0) sigsuspend (&oset);
         sigprocmask (SIG_UNBLOCK, &set, NULL);
         usr1 = 0; /*reseteamos la flag de USR1*/
+        printf("Preparando ronda de minado\n");
+        /*accedemos al objetivo de cada ronda*/
+        trg = systmin->current.obj;
+        printf("trg: %ld\n", trg);
+        j=0;
+        for (i = 0; i < n; i++){
+            res[i] = res_ini(trg, minmax[j], minmax[j+1]);
+            if (res[i] == NULL){
+                printf("Minero: Error en bucle de res\n");
+                i--;
+                while (i >= 0) {
+                    free(res[i]);
+                    i--;
+                }
+                minero_logoff(systmin);
+                munmap(systmin, sizeof(MinSys));
+                free(res);
+                free(minmax);
+                exit(EXIT_FAILURE);
+            }
+            j+=2;
+        }
+        win=0;
         solucion = round(res,n, systmin);
         if(solucion == -1){  
             printf("Fallo en ronda\n");
@@ -808,7 +812,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
          *  comienza la votacion, el ganador tambien vota llamando
          *  a monitor para validar la solucion que ha obtenido
          */
-        printf("vamos a validator\n");
+        /*printf("vamos a validator\n");*/
         if((st = validator(systmin)) < 0){
             printf("minero: error en validador\n");
             minero_logoff(systmin);
@@ -833,7 +837,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         sem_post(&(systmin->access));
         if(win == 1){
             printf("Bloque a registrar:\n");
-            printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n", systmin->current.id, systmin->current.pid, systmin->current.obj,
+            printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n\n", systmin->current.id, systmin->current.pid, systmin->current.obj,
             systmin->current.sol, systmin->current.votes[0], systmin->current.votes[1]);
 
             
