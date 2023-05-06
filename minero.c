@@ -139,7 +139,7 @@ void new_trg_set(Result** res, int n, long int trg){
 
     /* Control de errores de los argumentos de entrada*/
     if(!res || trg < 0 || n < 0){
-        printf("new_trg_set: Fallo en parametros");
+        printf("new_trg_set: Fallo en parametros\n");
         return;
     }
     
@@ -163,7 +163,7 @@ void new_trg_set(Result** res, int n, long int trg){
 *  Output:                                         
 *  void                                            
 */
-void * t_work(void* args){
+void* t_work(void* args){
     long int i, res = 0;
     i = ((Result *) args)->min;
     /*printf("Im on it\n");*/
@@ -445,7 +445,7 @@ int minero_map(MinSys** s, int fd, int og){
     }
     close(fd);
 
-   if(og){
+    if(og){
         sem_init(&((*s)->access), 1, 1); /* inicializamos primero el semaforo */
         sem_wait(&((*s)->access)); /*bloqueamos el acceso a los datos*/
         
@@ -457,34 +457,26 @@ int minero_map(MinSys** s, int fd, int og){
         (*s)->b.votes[0] = 0; /*votos a favor*/
         (*s)->b.votes[1] = 0;/*votos totales*/
         /*inicializamos el array de mineros activos*/
-        for (i = 0; i < MAX_MINERS; i++){ 
-            if (i == 0) (*s)->miners[i] = getpid();
+        (*s)->miners[0] = getpid();
+        (*s)->votes[0] = -1;
+        for (i = 1; i < MAX_MINERS; i++){ 
             (*s)->miners[i] = -1;
             (*s)->votes[i] = -1;
         }
 
-        i = 0; /*inicializamos las carteras del sistema y del bloque*/
-        for (i = 0; i < (MAX_MINERS * 10); i++){
-            if (i==0){
-                if ((st = wallet_set(&((*s)->wllt[i]), (*s)->miners[i], 1)) < 0){
-                    printf("minero_map: fallo en wallet_set\n");
-                    return -1;
-                }
-                if ((st = wallet_set(&((*s)->b.wlt[i]), (*s)->miners[i], 1)) < 0){
-                    printf("minero_map: fallo en wallet_set para bloque\n");
-                    return -1; 
-                }
-                (*s)->wlltfull++;
-            } else if ((st = wallet_set(&((*s)->wllt[i]), 0, -1)) < 0){
+        if ((st = wallet_set(&((*s)->wllt[0]), (*s)->miners[0], 1)) < 0){
+            printf("minero_map: fallo en wallet_set primer minero\n");
+            return -1;
+        }
+        (*s)->wlltfull++;
+        for (i = 1; i < (MAX_MINERS * 10); i++){
+            if ((st = wallet_set(&((*s)->wllt[i]), 0, -1)) < 0){
                     printf("minero_map: fallo en wallet_set\n");
                     return -1; 
-            } else if ((st = wallet_set(&((*s)->b.wlt[i]), 0, -1)) < 0){
-                printf("minero_map: fallo en wallet_set para bloque\n");
-                return -1; 
             }
         }
         sem_post(&((*s)->access));
-   } else {
+    } else {
         if((st = sem_wait(&((*s)->access))) < 0){
             perror("El sistema esta siendo liberado o ha ocurrido lo siguiente: ");
             return -1;
@@ -513,7 +505,7 @@ int minero_map(MinSys** s, int fd, int og){
         }
         
         sem_post(&((*s)->access));
-   }    
+    }
     return st;
 }
 
@@ -530,7 +522,7 @@ void minero_logoff(MinSys* s){
     }
 
     if((i = wallet_addminer(&st, s->b.wlt, miner, 0)) < 0){
-        printf("minero_logoff: fallo en wallet_addminer");
+        printf("minero_logoff: fallo en wallet_addminer\n");
         munmap(s, sizeof(s));
         return;
     }
