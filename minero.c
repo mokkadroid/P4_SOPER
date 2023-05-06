@@ -166,8 +166,8 @@ void * t_work(void* args){
         return NULL;
     }
 
-    /*Comprobamos si se encuentra una solución*/
-    while(i<=((Result *)args)->max && found !=TRUE){
+    /*Comprobamos si se encuentra una solución mientras no se mande usr2*/
+    while(i<=((Result *)args)->max && found != TRUE && usr2 == 0){
         res = pow_hash(i);
         if(res == ((Result *)args)->obj){
             ((Result *)args)->sol = i;/*la solucion al hash es i*/
@@ -194,42 +194,45 @@ void * t_work(void* args){
 */
 long int round(Result** res, int n, MinSys *syst){
     pthread_t *pth=NULL;
-    int i=0, j=0, st, count=0, win=0; /*st-> status de pthread_create | win-> flag para saber si el retorno sera > 0 */
+    int i=0, j=0, st, win=0; /*st-> status de pthread_create | win-> flag para saber si el retorno sera > 0 */
     long int new_trg=-1; /* solo sera >0 si encuentra la solucion */
 
     if(!res || n<1 || !syst){
         printf("Round: fallo en argumentos\n");
-        return new_trg;
+        return -1;
     }
 
     /* Reserva de memoria en la creación de los hilos*/
     pth=(pthread_t*)malloc(n*sizeof(pthread_t));
     if (!pth){
         perror("round --> malloc pth: ");
-        return new_trg;
+        return -1;
     }
     
 
     /* creamos los hilos mientras que no se haya recibido la señal */
-    for ( i = 0; i < n && usr2<1; i++){
+    for ( i = 0; i < n; i++){
         st=pthread_create(&pth[i], NULL, t_work, (void *)(res[i]));
-        count++;
         /*printf("hilo creado: %d\n", st);*/
         if(st!=0){
             printf("Round --> pthread_create: %d\n", st);
             free(pth);
-            return new_trg;
+            return -1;
         }
     }
     /* Comprobamos la ejecucion */
     i=0;
-    for (i = 0; i < count; i++){
+    for (i = 0; i < n; i++){
         st=pthread_join(pth[i], NULL);
         if (st!=0){
-            printf("join number: %d\n", i);
-            free(pth);
-            join_check(st);
-            return new_trg;
+            if(st!=ESRCH){/* El hilo puede acabar antes de hacer el join */
+                printf("join number: %d\n", i);
+                printf("thread Id: %u\n", pth[i]);
+                free(pth);
+                join_check(st);
+                printf("new trg: %08ld\n", new_trg);
+                return -1;
+            }
         }
         if (res[i]->sol > 0 && usr2<1){
             new_trg= res[i]->sol;
@@ -266,7 +269,7 @@ long int round(Result** res, int n, MinSys *syst){
     }
     usr2=0; /* reseteamos la flag de usr2 para poder indicar luego el comienzo de la votacion */
     if(win==0) new_trg=-2;
-    if(count>0) free(pth);
+    free(pth);
     return new_trg;
 }
 /**
@@ -499,21 +502,26 @@ int minero_map(MinSys **syst, int fd, int og){
    } else {
         printf("Accediendo a shm\n");
         sem_wait(&((*syst)->access));
+        printf("minero_map: bajada semaforo OK\n");
         if((*syst)->onsys == 0){
             printf("El sistema esta siendo liberado");
             return -1;
         }
+        printf("Insertando minero\n");
+        st=0;
         for (i = 0; i < MAX_MINERS; i++){ 
-            if ((*syst)->miners[i] == -1){
+            if ((*syst)->miners[i] == -1 && st == 0){
+                printf("minero insertado\n");
                 (*syst)->miners[i] = getpid();
                 (*syst)->onsys++;
-                st = 0;
+                printf("mineros en linea actualizados: %d\n", (*syst)->onsys);
+                st = 1;
                 break;
             }
-            st = 1;
         }
         /* Si se ha podido unir al sistema, se crea una cartera */
         if (st == 1){
+            printf("insertando cartera\n");
             st = wallet_addminer(&((*syst)->wlltfull), (*syst)->wllt, getpid(), 1);
             if(st < 0){
                sem_post(&((*syst)->access));
@@ -522,6 +530,7 @@ int minero_map(MinSys **syst, int fd, int og){
             }
         }
         sem_post(&((*syst)->access));
+        printf("saliendo de minero_map\n");
    }    
     return 0;  
 }
@@ -532,8 +541,10 @@ void minero_logoff(MinSys *syst){
     if(!syst) return;
     miner = getpid();
     sem_wait(&(syst->access));
-    syst->onsys--;
-    for (i = 0; i < MAX_MINERS; i++){
+    st = syst->onsys;
+    syst->onsys = st - 1;
+    printf("mineros en linea actuales: %d\n", syst->onsys);
+    for(i = 0; i < MAX_MINERS; i++){
         if(syst->miners[i] == miner) syst->miners[i] = -1;
     }
     if(syst->onsys == 0){
@@ -639,7 +650,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     /* Desbloquemos señales despues de la preparacion de los handlers */
     sigprocmask(SIG_UNBLOCK, &set, &oset);
     
-    /* abrimos shm */
+    /* abrimos shm si es el primero */
     if(trg == 0){
         if (ftruncate(fd, sizeof(MinSys)) == -1){
             /*Mostramos mensajes de error y perror si ha habido 
@@ -658,7 +669,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         win++;
 
     } else {
-        printf("uniendo a sistema\n");
+        printf("accediendo a sistema\n");
         st = minero_map(&systmin, fd, 0);
         if(st < 0){
             printf("minero: Error de minero_map\n");
@@ -742,6 +753,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     while (alrm == 0 && sint == 0){
         /* Si es el ganador o el primer minero, manda USR1 para iniciar minado */
         if(win == 1){
+            usleep(250*1000);
             sem_wait(&(systmin->access));
             sem_init(&(systmin->barrier), 1, 0);
             sem_init(&(systmin->mutex), 1, 1);
@@ -822,7 +834,8 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         if(win == 1){
             printf("Bloque a registrar:\n");
             printf("Id: %04d\nWinner: %d\nTRG: %08ld\nSOL: %08ld\nVotes: %d/%d\n", systmin->current.id, systmin->current.pid, systmin->current.obj,
-             systmin->current.sol, systmin->current.votes[0], systmin->current.votes[1]);
+            systmin->current.sol, systmin->current.votes[0], systmin->current.votes[1]);
+
             
             st = minsys_roundclr(systmin);
             if (st < 0){
@@ -837,7 +850,6 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         }
         sem_post(&(systmin->access));
         new_trg_set(res, n, systmin->current.obj);
-        printf("estado señales: %d(SIGINT) %d(SIGALRM)", sint, alrm);
     }
     /* liberado de memoria */
     /*mq_close(q);*/
