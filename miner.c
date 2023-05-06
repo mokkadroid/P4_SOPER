@@ -6,9 +6,9 @@
 
 
 int main(int argc, const char* argv[]){
-    unsigned int n, secs, mem;
+    unsigned int n, secs, mem, st;
 
-    if(argc!=2){
+    if(argc!=3){
         printf("fallo en numero argumentos!\n");
         return -1;
     }
@@ -30,6 +30,11 @@ int main(int argc, const char* argv[]){
             /* ponemos trg a 1 para indicarle a minero que no es el primero en conectarse al sistema */
             minero(1, 5, secs, mem);
             close(mem);
+            st=shm_unlink(SHM_NAME);
+            if(st<0){
+                perror("\nFallo en shm_unlink: ");
+                return -1;
+            }
             return 0;
        }else{
             /*Mostramos si ha habido errores y salimos*/
@@ -41,6 +46,10 @@ int main(int argc, const char* argv[]){
     
     minero(0, n, secs, mem);
     close(mem);
-    shm_unlink(SHM_NAME);
+    st=shm_unlink(SHM_NAME);
+    if(st<0){
+        perror("\nFallo en shm_unlink: ");
+        return -1;
+    }
     return 0;
 }
