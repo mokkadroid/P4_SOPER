@@ -526,7 +526,7 @@ int minero_map(MinSys **syst, int fd, int og){
 }
 
 void minero_logoff(MinSys *syst){
-    int i = 0, miner, st = -1;
+    int i = 0, miner;
 
     if(!syst) return;
     miner = getpid();
@@ -556,12 +556,9 @@ void minero_logoff(MinSys *syst){
 * void                                            
 */
 void minero(long int trg, int n, unsigned int secs, int fd){
-    int i = 0, j = 0, og = 1, win = 0, st;
+    int i = 0, j = 0, win = 0, st;
     long int *minmax = NULL, solucion;
     Result **res = NULL;
-    mqd_t q;
-    struct mq_attr attributes;
-    Bloque msg;
     MinSys *systmin = NULL;
     struct sigaction act1, act2, actint, actlrm;
     sigset_t set, oset;
@@ -703,39 +700,6 @@ void minero(long int trg, int n, unsigned int secs, int fd){
         }
         j+=2;
     }
-    /* Abrimos cola */
-    /*atributos de la cola
-    attributes.mq_flags = 0;
-    attributes.mq_maxmsg = 5;
-    attributes.mq_curmsgs = 0;
-    attributes.mq_msgsize = sizeof(Bloque);*/
-    /* La cola sera no bloqueante para que no se atasque si monitor no esta activo */
-    /*if ((q = mq_open(MQ_NAME, O_CREAT |O_EXCL | O_WRONLY | O_NONBLOCK, S_IRUSR | S_IWUSR,  &attributes))== (mqd_t)-1) {
-        if(errno == EEXIST){*/
-            /*Si ya se ha realizado y por tanto existe, lo abrimos*/
-           /*if((q = mq_open(MQ_NAME, O_WRONLY | O_NONBLOCK, S_IRUSR | S_IWUSR,  &attributes)) == (mqd_t)-1){*/
-                /*Control de errores sobre la memoria compartida
-                perror("mq_open");
-                minero_logoff(systmin);
-                munmap(systmin, sizeof(MinSys));
-                res_free(res, n);
-                free(minmax);
-                exit(EXIT_FAILURE);
-            }
-            og=0; Indicamos que no es el minero que la ha abierto */
-        /*}else{*/
-            /*Mostramos si ha habido errores y salimos*/
-            /*perror("mq_open");
-            minero_logoff(systmin);
-            munmap(systmin, sizeof(MinSys));
-            res_free(res, n);
-            free(minmax);
-            mq_unlink(MQ_NAME);
-            exit(EXIT_FAILURE);
-        }
-    }
-    if(og) mq_unlink(MQ_NAME);*/
-
 
     /* Bucle de ejecucion de las rondas */
     while (alrm == 0 && sint == 0){
@@ -850,7 +814,7 @@ void minero(long int trg, int n, unsigned int secs, int fd){
     exit(EXIT_SUCCESS);
 }
 int validator(MinSys* syst){
-    int pid, i = 0, valid = 0, voted = 0;
+    int pid, i = 0, voted = 0;
     /* voted -> flag para que pueda emitir su voto el minero ganador una sola vez */
     long int solhash;
     if(!syst){
@@ -861,7 +825,8 @@ int validator(MinSys* syst){
     pid = getpid(); /* */
     if (pid == syst->current.pid){/* Si es el minero ganador */
         for (i = 0; i < syst->onsys; i++){ /* comprueba tantas veces como mineros conectados haya*/
-            usleep(250*1000);/*espera inactiva de 250ms*/
+            struct timespec req, rem = {1, 250 * 1000000};
+            nanosleep(&req, &rem);/*espera inactiva de 250ms*/
             sem_wait(&(syst->access));
             printf("%d \n", syst->votes[i]);
             if(syst->votes[i] != -1){
